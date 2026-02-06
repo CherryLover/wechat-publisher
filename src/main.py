@@ -3,11 +3,14 @@
 """
 
 import os
+import re
+import uuid
 import httpx
 from pathlib import Path
 from contextlib import asynccontextmanager
-from fastapi import FastAPI, HTTPException, Request
-from fastapi.responses import HTMLResponse
+from fastapi import FastAPI, HTTPException, Request, UploadFile, File
+from fastapi.responses import HTMLResponse, FileResponse
+from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from pydantic import BaseModel
 from typing import Optional
@@ -16,6 +19,9 @@ from dotenv import load_dotenv
 from . import article
 from .wechat import WechatAPI
 from .html_convert import markdown_to_wechat_html
+
+# 图片存储目录
+UPLOAD_DIR = Path("/app/uploads")
 
 load_dotenv()
 
@@ -32,6 +38,7 @@ async def lifespan(app: FastAPI):
 
     # 启动时初始化
     article.init_db()
+    UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
 
     appid = os.getenv("WX_APPID")
     appsecret = os.getenv("WX_APPSECRET")
@@ -77,11 +84,47 @@ class PublishResponse(BaseModel):
     message: str
 
 
+class UploadImageResponse(BaseModel):
+    url: str
+    filename: str
+
+
 # ========== API 路由 ==========
 
 @app.get("/")
 async def root():
     return {"service": "微信公众号发布服务", "status": "running"}
+
+
+# ========== 图片上传 ==========
+
+@app.post("/api/upload", response_model=UploadImageResponse)
+async def upload_image(request: Request, file: UploadFile = File(...)):
+    """上传图片到本地存储"""
+    # 生成唯一文件名
+    ext = Path(file.filename).suffix or ".png"
+    filename = f"{uuid.uuid4().hex}{ext}"
+    file_path = UPLOAD_DIR / filename
+
+    # 保存文件
+    content = await file.read()
+    with open(file_path, "wb") as f:
+        f.write(content)
+
+    base_url = str(request.base_url).rstrip("/")
+    return UploadImageResponse(
+        url=f"{base_url}/images/{filename}",
+        filename=filename
+    )
+
+
+@app.get("/images/{filename}")
+async def get_image(filename: str):
+    """获取本地图片"""
+    file_path = UPLOAD_DIR / filename
+    if not file_path.exists():
+        raise HTTPException(status_code=404, detail="图片不存在")
+    return FileResponse(file_path)
 
 
 @app.post("/api/articles", response_model=ArticleResponse)
@@ -164,8 +207,64 @@ async def list_articles_api(request: Request):
     ]
 
 
+async def convert_local_images_to_wechat(html_content: str, base_url: str) -> str:
+    """将本地图片 URL 转换为微信图片 URL"""
+    # 匹配本地图片 URL: /images/xxx 或 http://xxx/images/xxx
+    pattern = r'<img[^>]+src=["\']([^"\']*?/images/([^"\']+))["\']'
+
+    async def replace_image(match):
+        local_url = match.group(1)
+        filename = match.group(2)
+        file_path = UPLOAD_DIR / filename
+
+        if not file_path.exists():
+            return match.group(0)  # 文件不存在，保持原样
+
+        # 读取本地图片
+        with open(file_path, "rb") as f:
+            image_data = f.read()
+
+        # 上传到微信
+        try:
+            wx_url = await wechat_api.upload_image(image_data, filename)
+            # 替换 src
+            original = match.group(0)
+            return original.replace(local_url, wx_url)
+        except Exception as e:
+            print(f"上传图片失败 {filename}: {e}")
+            return match.group(0)
+
+    # 找到所有匹配
+    matches = list(re.finditer(pattern, html_content))
+    if not matches:
+        return html_content
+
+    # 逐个替换（从后往前，避免位置偏移）
+    result = html_content
+    for match in reversed(matches):
+        local_url = match.group(1)
+        filename = match.group(2)
+        file_path = UPLOAD_DIR / filename
+
+        if not file_path.exists():
+            continue
+
+        with open(file_path, "rb") as f:
+            image_data = f.read()
+
+        try:
+            wx_url = await wechat_api.upload_image(image_data, filename)
+            original = match.group(0)
+            new_img = original.replace(local_url, wx_url)
+            result = result[:match.start()] + new_img + result[match.end():]
+        except Exception as e:
+            print(f"上传图片失败 {filename}: {e}")
+
+    return result
+
+
 @app.post("/api/articles/{article_id}/publish", response_model=PublishResponse)
-async def publish_article_api(article_id: str):
+async def publish_article_api(article_id: str, request: Request):
     """发布文章到微信公众号草稿箱"""
     if not wechat_api:
         raise HTTPException(status_code=500, detail="微信 API 未配置")
@@ -175,6 +274,11 @@ async def publish_article_api(article_id: str):
         raise HTTPException(status_code=404, detail="文章不存在")
 
     try:
+        base_url = str(request.base_url).rstrip("/")
+
+        # 转换本地图片为微信图片
+        wx_html_content = await convert_local_images_to_wechat(art.html_content, base_url)
+
         # 下载一张默认封面图（暂时用随机图片）
         async with httpx.AsyncClient() as client:
             resp = await client.get("https://picsum.photos/900/500", follow_redirects=True)
@@ -186,7 +290,7 @@ async def publish_article_api(article_id: str):
         # 创建草稿
         draft_media_id = await wechat_api.create_draft(
             title=art.title,
-            content=art.html_content,
+            content=wx_html_content,
             thumb_media_id=thumb_media_id
         )
 
