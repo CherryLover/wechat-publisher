@@ -1,0 +1,25 @@
+services:
+  wechat-publisher:
+    build: .
+    container_name: wechat-publisher
+    restart: unless-stopped
+    networks:
+      - dokploy-network
+    volumes:
+      - ./.env:/app/.env
+      - wechat-publisher-data:/app/data
+      - wechat-publisher-uploads:/app/uploads
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.wechat-publisher.rule=Host(`publisher.flyooo.uk`)"
+      - "traefik.http.routers.wechat-publisher.entrypoints=websecure"
+      - "traefik.http.routers.wechat-publisher.tls.certresolver=letsencrypt"
+      - "traefik.http.services.wechat-publisher.loadbalancer.server.port=8000"
+
+networks:
+  dokploy-network:
+    external: true
+
+volumes:
+  wechat-publisher-data:
+  wechat-publisher-uploads:
