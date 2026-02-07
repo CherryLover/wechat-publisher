@@ -127,9 +127,9 @@ async def list_themes_api():
 
 # ========== 图片上传 ==========
 
-@app.post("/api/upload", response_model=UploadImageResponse)
-async def upload_image(request: Request, file: UploadFile = File(...)):
-    """上传图片到本地存储"""
+@app.post("/api/images", response_model=UploadImageResponse)
+async def save_image(request: Request, file: UploadFile = File(...)):
+    """保存图片到本地存储"""
     # 生成唯一文件名
     ext = Path(file.filename).suffix or ".png"
     filename = f"{uuid.uuid4().hex}{ext}"
