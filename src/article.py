@@ -17,11 +17,12 @@ class Article:
     id: str
     title: str
     content: str  # Markdown
-    html_content: str  # 渲染后的 HTML
+    html_content: str  # 渲染后的 HTML（内联样式，发布用）
     created_at: str
     updated_at: str
     published_at: Optional[str] = None
     draft_media_id: Optional[str] = None
+    theme_id: str = "default"
 
 
 def init_db():
@@ -38,9 +39,15 @@ def init_db():
             created_at TEXT NOT NULL,
             updated_at TEXT NOT NULL,
             published_at TEXT,
-            draft_media_id TEXT
+            draft_media_id TEXT,
+            theme_id TEXT DEFAULT 'default'
         )
     """)
+    # 兼容已有数据：如果表已存在但没有 theme_id 列，添加它
+    try:
+        conn.execute("ALTER TABLE articles ADD COLUMN theme_id TEXT DEFAULT 'default'")
+    except sqlite3.OperationalError:
+        pass  # 列已存在
     conn.commit()
     conn.close()
 
@@ -54,11 +61,12 @@ def _row_to_article(row: tuple) -> Article:
         created_at=row[4],
         updated_at=row[5],
         published_at=row[6],
-        draft_media_id=row[7]
+        draft_media_id=row[7],
+        theme_id=row[8] if len(row) > 8 and row[8] else "default"
     )
 
 
-def create_article(title: str, content: str, html_content: str) -> Article:
+def create_article(title: str, content: str, html_content: str, theme_id: str = "default") -> Article:
     """创建文章"""
     article_id = uuid.uuid4().hex[:8]
     now = datetime.now().isoformat()
@@ -66,10 +74,10 @@ def create_article(title: str, content: str, html_content: str) -> Article:
     conn = sqlite3.connect(DB_PATH)
     conn.execute(
         """
-        INSERT INTO articles (id, title, content, html_content, created_at, updated_at)
-        VALUES (?, ?, ?, ?, ?, ?)
+        INSERT INTO articles (id, title, content, html_content, created_at, updated_at, theme_id)
+        VALUES (?, ?, ?, ?, ?, ?, ?)
         """,
-        (article_id, title, content, html_content, now, now)
+        (article_id, title, content, html_content, now, now, theme_id)
     )
     conn.commit()
     conn.close()
@@ -80,7 +88,8 @@ def create_article(title: str, content: str, html_content: str) -> Article:
         content=content,
         html_content=html_content,
         created_at=now,
-        updated_at=now
+        updated_at=now,
+        theme_id=theme_id
     )
 
 
@@ -103,7 +112,8 @@ def update_article(
     article_id: str,
     title: Optional[str] = None,
     content: Optional[str] = None,
-    html_content: Optional[str] = None
+    html_content: Optional[str] = None,
+    theme_id: Optional[str] = None
 ) -> Optional[Article]:
     """更新文章"""
     article = get_article(article_id)
@@ -113,16 +123,17 @@ def update_article(
     new_title = title if title is not None else article.title
     new_content = content if content is not None else article.content
     new_html = html_content if html_content is not None else article.html_content
+    new_theme = theme_id if theme_id is not None else article.theme_id
     now = datetime.now().isoformat()
 
     conn = sqlite3.connect(DB_PATH)
     conn.execute(
         """
         UPDATE articles
-        SET title = ?, content = ?, html_content = ?, updated_at = ?
+        SET title = ?, content = ?, html_content = ?, updated_at = ?, theme_id = ?
         WHERE id = ?
         """,
-        (new_title, new_content, new_html, now, article_id)
+        (new_title, new_content, new_html, now, new_theme, article_id)
     )
     conn.commit()
     conn.close()

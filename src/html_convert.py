@@ -1,124 +1,254 @@
 """
-Markdown → 微信公众号兼容 HTML 转换
+Markdown → 微信公众号兼容 HTML 转换（主题引擎）
 """
 
-import markdown
 import re
+from pathlib import Path
+
+import css_inline
+import markdown
+
+THEMES_DIR = Path(__file__).parent.parent / "themes"
+
+# 主题缓存：{theme_id: css_content}
+_theme_cache: dict[str, str] = {}
+
+# 主题显示名
+THEME_NAMES = {
+    "default": "默认",
+    "purple": "Purple",
+    "lapis": "Lapis",
+    "rainbow": "Rainbow",
+    "maize": "Maize",
+    "orangeheart": "Orange Heart",
+    "phycat": "Phycat",
+    "pie": "Pie",
+    "juejin_default": "掘金",
+    "medium_default": "Medium",
+    "toutiao_default": "头条",
+    "zhihu_default": "知乎",
+}
 
 
-def markdown_to_wechat_html(md_content: str) -> str:
+def load_themes():
+    """启动时加载所有主题 CSS 到内存"""
+    _theme_cache.clear()
+    for css_file in THEMES_DIR.glob("*.css"):
+        theme_id = css_file.stem
+        _theme_cache[theme_id] = css_file.read_text(encoding="utf-8")
+
+
+def list_themes() -> list[dict]:
+    """返回可用主题列表"""
+    if not _theme_cache:
+        load_themes()
+    return [
+        {"id": tid, "name": THEME_NAMES.get(tid, tid)}
+        for tid in sorted(_theme_cache.keys())
+    ]
+
+
+def _get_theme_css(theme_id: str) -> str:
+    """获取主题 CSS，不存在则回退到 default"""
+    if not _theme_cache:
+        load_themes()
+    return _theme_cache.get(theme_id, _theme_cache.get("default", ""))
+
+
+def _parse_css_declarations(block: str) -> dict[str, str]:
     """
-    将 Markdown 转换为微信公众号兼容的 HTML
+    解析 CSS 声明块中的属性，正确处理值中包含分号的情况（如 SVG data URL）。
 
-    微信公众号限制：
-    - 不支持外部 CSS
-    - 不支持 JS
-    - 样式必须内联
+    通过跟踪引号和括号状态，在正确的分号位置分割声明。
     """
-    # 先用 markdown 库转换
-    html = markdown.markdown(
+    variables: dict[str, str] = {}
+    i = 0
+    length = len(block)
+
+    while i < length:
+        # 跳过空白和注释
+        while i < length and block[i] in ' \t\n\r':
+            i += 1
+        if i >= length:
+            break
+        # 跳过 CSS 注释
+        if block[i:i+2] == '/*':
+            end = block.find('*/', i + 2)
+            i = end + 2 if end != -1 else length
+            continue
+
+        # 找属性名
+        j = i
+        while j < length and block[j] != ':':
+            j += 1
+        if j >= length:
+            break
+        prop_name = block[i:j].strip()
+        j += 1  # 跳过冒号
+
+        # 找值（需要正确处理引号和括号中的分号）
+        value_start = j
+        in_single_quote = False
+        in_double_quote = False
+        paren_depth = 0
+
+        while j < length:
+            ch = block[j]
+            if ch == '\\':
+                j += 2  # 跳过转义字符
+                continue
+            if in_single_quote:
+                if ch == "'":
+                    in_single_quote = False
+            elif in_double_quote:
+                if ch == '"':
+                    in_double_quote = False
+            else:
+                if ch == "'":
+                    in_single_quote = True
+                elif ch == '"':
+                    in_double_quote = True
+                elif ch == '(':
+                    paren_depth += 1
+                elif ch == ')':
+                    paren_depth = max(0, paren_depth - 1)
+                elif ch == ';' and paren_depth == 0:
+                    break
+            j += 1
+
+        value = block[value_start:j].strip()
+        if prop_name.startswith('--'):
+            variables[prop_name] = value
+        i = j + 1
+
+    return variables
+
+
+def resolve_css_variables(css: str) -> str:
+    """
+    解析 CSS 变量：将 :root 中定义的 var(--xxx) 替换为实际值。
+
+    支持嵌套变量（如 --shadow: 3px 3px 10px var(--shadow-color)），
+    通过多轮替换处理依赖链。
+    """
+    # 提取 :root 块中的变量定义
+    root_match = re.search(r':root\s*\{([^}]+)\}', css, re.DOTALL)
+    if not root_match:
+        return css
+
+    root_block = root_match.group(1)
+    variables = _parse_css_declarations(root_block)
+
+    # 多轮解析，处理变量之间的依赖（最多 5 轮）
+    for _ in range(5):
+        changed = False
+        for var_name, var_value in variables.items():
+            resolved = re.sub(
+                r'var\((--[\w-]+)\)',
+                lambda m: variables.get(m.group(1), m.group(0)),
+                var_value
+            )
+            if resolved != var_value:
+                variables[var_name] = resolved
+                changed = True
+        if not changed:
+            break
+
+    # 在 CSS 中替换所有 var(--xxx)
+    def replace_var(m):
+        return variables.get(m.group(1), m.group(0))
+
+    resolved_css = re.sub(r'var\((--[\w-]+)\)', replace_var, css)
+
+    # 移除 :root 块（内联后不需要）
+    resolved_css = re.sub(r':root\s*\{[^}]+\}', '', resolved_css, count=1)
+
+    return resolved_css
+
+
+def _extract_pseudo_rules(css: str) -> str:
+    """
+    从 CSS 中提取伪元素/伪类规则（::before, ::after, :nth-child 等）。
+    这些规则无法内联，需要保留在 <style> 标签中。
+    """
+    pseudo_rules = []
+    # 匹配包含伪元素/伪类的 CSS 规则块
+    pattern = r'([^{}]*(?:::before|::after|:nth-child|:hover|:focus)[^{]*)\{([^}]*)\}'
+    for match in re.finditer(pattern, css):
+        selector = match.group(1).strip()
+        body = match.group(2).strip()
+        if body:  # 只保留有内容的规则
+            pseudo_rules.append(f"{selector} {{{body}}}")
+    return '\n'.join(pseudo_rules)
+
+
+def markdown_to_html(md_content: str) -> str:
+    """Markdown → 原始 HTML（无样式）"""
+    return markdown.markdown(
         md_content,
         extensions=['fenced_code', 'tables', 'nl2br']
     )
 
-    # 添加内联样式
-    html = add_inline_styles(html)
 
-    return html
+def apply_theme_for_preview(html: str, theme_id: str = "default") -> str:
+    """
+    生成预览用 HTML：<style>CSS</style><section id="wenyan">HTML</section>
+
+    预览页直接用 <style> 标签加载 CSS，渲染效果完整。
+    """
+    css = _get_theme_css(theme_id)
+    return f'<style>\n{css}\n</style>\n<section id="wenyan">\n{html}\n</section>'
 
 
-def add_inline_styles(html: str) -> str:
-    """为 HTML 元素添加内联样式"""
+def apply_theme_for_publish(html: str, theme_id: str = "default") -> str:
+    """
+    生成发布用 HTML：CSS → 内联样式（微信不支持 <style> 标签）。
 
-    # 段落样式
-    html = re.sub(
-        r'<p>',
-        '<p style="margin: 1em 0; line-height: 1.8; color: #333;">',
-        html
-    )
+    步骤：
+    1. 解析 CSS 变量
+    2. 提取伪元素规则（无法内联，保留在 <style> 中）
+    3. 用 css-inline 将普通规则转为内联样式
+    """
+    css = _get_theme_css(theme_id)
+    resolved_css = resolve_css_variables(css)
 
-    # 标题样式
-    html = re.sub(
-        r'<h1>',
-        '<h1 style="font-size: 1.5em; font-weight: bold; margin: 1.5em 0 0.5em; color: #333;">',
-        html
-    )
-    html = re.sub(
-        r'<h2>',
-        '<h2 style="font-size: 1.3em; font-weight: bold; margin: 1.2em 0 0.5em; color: #333;">',
-        html
-    )
-    html = re.sub(
-        r'<h3>',
-        '<h3 style="font-size: 1.1em; font-weight: bold; margin: 1em 0 0.5em; color: #333;">',
-        html
-    )
+    # 提取伪元素规则
+    pseudo_css = _extract_pseudo_rules(resolved_css)
 
-    # 代码块样式
-    html = re.sub(
-        r'<pre>',
-        '<pre style="background: #f5f5f5; padding: 1em; border-radius: 4px; overflow-x: auto; font-size: 0.9em;">',
-        html
-    )
-    html = re.sub(
-        r'<code>',
-        '<code style="background: #f5f5f5; padding: 0.2em 0.4em; border-radius: 3px; font-family: monospace;">',
-        html
-    )
+    # 构建完整 HTML 文档供 css-inline 处理
+    full_html = f"""<html><head><style>{resolved_css}</style></head>
+<body><section id="wenyan">{html}</section></body></html>"""
 
-    # 引用样式
-    html = re.sub(
-        r'<blockquote>',
-        '<blockquote style="border-left: 4px solid #ddd; padding-left: 1em; margin: 1em 0; color: #666;">',
-        html
+    inliner = css_inline.CSSInliner(
+        inline_style_tags=True,
+        keep_style_tags=False,
+        keep_link_tags=False,
     )
+    inlined = inliner.inline(full_html)
 
-    # 列表样式
-    html = re.sub(
-        r'<ul>',
-        '<ul style="margin: 1em 0; padding-left: 2em;">',
-        html
+    # 提取 <section id="wenyan" ...>...</section> 部分（css-inline 会给 section 加 style）
+    m = re.search(
+        r'(<section id="wenyan"[^>]*>)(.*?)(</section>)',
+        inlined,
+        re.DOTALL
     )
-    html = re.sub(
-        r'<ol>',
-        '<ol style="margin: 1em 0; padding-left: 2em;">',
-        html
-    )
-    html = re.sub(
-        r'<li>',
-        '<li style="margin: 0.5em 0; line-height: 1.6;">',
-        html
-    )
+    if m:
+        result = m.group(1) + m.group(2) + m.group(3)
+    else:
+        result = f'<section id="wenyan">{html}</section>'
 
-    # 图片样式（居中，最大宽度）
-    html = re.sub(
-        r'<img ',
-        '<img style="max-width: 100%; height: auto; display: block; margin: 1em auto;" ',
-        html
-    )
+    # 如果有伪元素规则，加上 <style> 标签
+    if pseudo_css.strip():
+        result = f'<style>{pseudo_css}</style>\n{result}'
 
-    # 表格样式
-    html = re.sub(
-        r'<table>',
-        '<table style="width: 100%; border-collapse: collapse; margin: 1em 0;">',
-        html
-    )
-    html = re.sub(
-        r'<th>',
-        '<th style="border: 1px solid #ddd; padding: 8px; background: #f5f5f5; text-align: left;">',
-        html
-    )
-    html = re.sub(
-        r'<td>',
-        '<td style="border: 1px solid #ddd; padding: 8px;">',
-        html
-    )
+    return result
 
-    # 链接样式
-    html = re.sub(
-        r'<a ',
-        '<a style="color: #576b95; text-decoration: none;" ',
-        html
-    )
 
-    return html
+def markdown_to_wechat_html(md_content: str, theme_id: str = "default") -> str:
+    """
+    主入口：Markdown → 微信兼容 HTML（带内联样式）。
+
+    向后兼容旧调用方式。
+    """
+    html = markdown_to_html(md_content)
+    return apply_theme_for_publish(html, theme_id)

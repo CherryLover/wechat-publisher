@@ -54,9 +54,6 @@
 
         .preview-content {
             padding: 16px;
-            font-size: 16px;
-            line-height: 1.8;
-            color: #333;
         }
 
         .preview-footer {
@@ -88,6 +85,12 @@
             color: #bbb;
             font-family: monospace;
         }
+
+        .theme-info {
+            font-size: 11px;
+            color: #bbb;
+            margin-top: 4px;
+        }
     </style>
 </head>
 <body>
@@ -101,7 +104,7 @@
         </div>
 
         <div class="preview-content">
-            {{ article.html_content | safe }}
+            {{ preview_html | safe }}
         </div>
 
         <div class="preview-footer">
@@ -111,6 +114,7 @@
             <span class="status-badge status-draft">待发布</span>
             {% endif %}
             <div class="article-id">ID: {{ article.id }}</div>
+            <div class="theme-info">主题: {{ theme_name }}</div>
         </div>
     </div>
 </body>

@@ -10,7 +10,6 @@ from pathlib import Path
 from contextlib import asynccontextmanager
 from fastapi import FastAPI, HTTPException, Request, UploadFile, File
 from fastapi.responses import HTMLResponse, FileResponse
-from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from pydantic import BaseModel
 from typing import Optional
@@ -18,7 +17,13 @@ from dotenv import load_dotenv
 
 from . import article
 from .wechat import WechatAPI
-from .html_convert import markdown_to_wechat_html
+from .html_convert import (
+    markdown_to_html,
+    markdown_to_wechat_html,
+    apply_theme_for_preview,
+    list_themes as get_available_themes,
+    load_themes,
+)
 
 # 图片存储目录
 UPLOAD_DIR = Path("/app/uploads")
@@ -39,6 +44,7 @@ async def lifespan(app: FastAPI):
     # 启动时初始化
     article.init_db()
     UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
+    load_themes()
 
     appid = os.getenv("WX_APPID")
     appsecret = os.getenv("WX_APPSECRET")
@@ -61,17 +67,20 @@ app = FastAPI(
 class CreateArticleRequest(BaseModel):
     title: str
     content: str  # Markdown
+    theme_id: str = "default"
 
 
 class UpdateArticleRequest(BaseModel):
     title: Optional[str] = None
     content: Optional[str] = None  # Markdown
+    theme_id: Optional[str] = None
 
 
 class ArticleResponse(BaseModel):
     id: str
     title: str
     content: str
+    theme_id: str
     preview_url: str
     created_at: str
     updated_at: str
@@ -91,9 +100,29 @@ class UploadImageResponse(BaseModel):
 
 # ========== API 路由 ==========
 
+def _article_response(art, base_url: str) -> ArticleResponse:
+    """构建 ArticleResponse"""
+    return ArticleResponse(
+        id=art.id,
+        title=art.title,
+        content=art.content,
+        theme_id=art.theme_id,
+        preview_url=f"{base_url}/preview/{art.id}",
+        created_at=art.created_at,
+        updated_at=art.updated_at,
+        published_at=art.published_at
+    )
+
+
 @app.get("/")
 async def root():
     return {"service": "微信公众号发布服务", "status": "running"}
+
+
+@app.get("/api/themes")
+async def list_themes_api():
+    """获取可用主题列表"""
+    return get_available_themes()
 
 
 # ========== 图片上传 ==========
@@ -130,19 +159,11 @@ async def get_image(filename: str):
 @app.post("/api/articles", response_model=ArticleResponse)
 async def create_article_api(req: CreateArticleRequest, request: Request):
     """创建文章"""
-    html_content = markdown_to_wechat_html(req.content)
-    art = article.create_article(req.title, req.content, html_content)
+    html_content = markdown_to_wechat_html(req.content, req.theme_id)
+    art = article.create_article(req.title, req.content, html_content, req.theme_id)
 
     base_url = str(request.base_url).rstrip("/")
-    return ArticleResponse(
-        id=art.id,
-        title=art.title,
-        content=art.content,
-        preview_url=f"{base_url}/preview/{art.id}",
-        created_at=art.created_at,
-        updated_at=art.updated_at,
-        published_at=art.published_at
-    )
+    return _article_response(art, base_url)
 
 
 @app.get("/api/articles/{article_id}", response_model=ArticleResponse)
@@ -153,38 +174,30 @@ async def get_article_api(article_id: str, request: Request):
         raise HTTPException(status_code=404, detail="文章不存在")
 
     base_url = str(request.base_url).rstrip("/")
-    return ArticleResponse(
-        id=art.id,
-        title=art.title,
-        content=art.content,
-        preview_url=f"{base_url}/preview/{art.id}",
-        created_at=art.created_at,
-        updated_at=art.updated_at,
-        published_at=art.published_at
-    )
+    return _article_response(art, base_url)
 
 
 @app.put("/api/articles/{article_id}", response_model=ArticleResponse)
 async def update_article_api(article_id: str, req: UpdateArticleRequest, request: Request):
     """更新文章"""
-    html_content = None
-    if req.content is not None:
-        html_content = markdown_to_wechat_html(req.content)
-
-    art = article.update_article(article_id, req.title, req.content, html_content)
-    if not art:
+    # 需要重新渲染 HTML 的情况：内容变了，或主题变了
+    existing = article.get_article(article_id)
+    if not existing:
         raise HTTPException(status_code=404, detail="文章不存在")
 
-    base_url = str(request.base_url).rstrip("/")
-    return ArticleResponse(
-        id=art.id,
-        title=art.title,
-        content=art.content,
-        preview_url=f"{base_url}/preview/{art.id}",
-        created_at=art.created_at,
-        updated_at=art.updated_at,
-        published_at=art.published_at
+    new_content = req.content if req.content is not None else existing.content
+    new_theme = req.theme_id if req.theme_id is not None else existing.theme_id
+
+    html_content = None
+    if req.content is not None or req.theme_id is not None:
+        html_content = markdown_to_wechat_html(new_content, new_theme)
+
+    art = article.update_article(
+        article_id, req.title, req.content, html_content, req.theme_id
     )
+
+    base_url = str(request.base_url).rstrip("/")
+    return _article_response(art, base_url)
 
 
 @app.get("/api/articles")
@@ -193,18 +206,7 @@ async def list_articles_api(request: Request):
     articles = article.list_articles()
     base_url = str(request.base_url).rstrip("/")
 
-    return [
-        ArticleResponse(
-            id=art.id,
-            title=art.title,
-            content=art.content,
-            preview_url=f"{base_url}/preview/{art.id}",
-            created_at=art.created_at,
-            updated_at=art.updated_at,
-            published_at=art.published_at
-        )
-        for art in articles
-    ]
+    return [_article_response(art, base_url) for art in articles]
 
 
 async def convert_local_images_to_wechat(html_content: str, base_url: str) -> str:
@@ -319,7 +321,22 @@ async def preview_article(article_id: str, request: Request):
     if not art:
         raise HTTPException(status_code=404, detail="文章不存在")
 
+    # 从 Markdown 实时渲染 + CSS（预览用完整 CSS，非内联）
+    raw_html = markdown_to_html(art.content)
+    preview_html = apply_theme_for_preview(raw_html, art.theme_id)
+
+    # 获取主题名称
+    theme_name = next(
+        (t["name"] for t in get_available_themes() if t["id"] == art.theme_id),
+        art.theme_id
+    )
+
     return templates.TemplateResponse(
         "preview.html",
-        {"request": request, "article": art}
+        {
+            "request": request,
+            "article": art,
+            "preview_html": preview_html,
+            "theme_name": theme_name,
+        }
     )
