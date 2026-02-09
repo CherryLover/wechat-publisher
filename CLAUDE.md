@@ -68,7 +68,7 @@
 - **IP 白名单**：需要在微信公众平台「设置与开发 → 基本配置 → IP白名单」中添加 82.180.162.81
 - **服务管理**：Docker Swarm + Dokploy + Traefik
 - **域名**：`publisher.flyooo.uk`（通过 Traefik 反代）
-- **MCP 端点**：`https://publisher.flyooo.uk/mcp`（SSE 传输，Phase 2 实现）
+- **MCP 端点**：`https://publisher.flyooo.uk/mcp/`（Streamable HTTP 传输）
 
 ### 需要的配置
 
@@ -151,7 +151,7 @@ wechat-publisher/
 |------|------|------|
 | Phase 1 | API 验证 + HTTP 服务 + 部署 | ✅ 已完成 |
 | Phase 2 | 文章排版样式（集成文颜主题） | ✅ 已完成 |
-| Phase 3 | MCP Server | 🔲 待开始 |
+| Phase 3 | MCP Server | ✅ 已完成 |
 | Phase 4 | 增强功能（封面图、鉴权、清理等） | 🔲 待开始 |
 
 ### Phase 1 - 基础服务（已完成）
@@ -213,15 +213,44 @@ wechat-publisher/
 - [ ] 预览页直接加载 CSS 渲染
 - [ ] 发布时转为内联样式
 
-### Phase 3 - MCP Server
+### Phase 3 - MCP Server（已完成）
 
-**目标**：让 AI 客户端能通过 MCP 协议直接调用服务
+**完成时间**：2026-02-09
 
-**待实现**：
-- [ ] MCP Server（SSE 传输）
-- [ ] 工具注册：create_article、update_article、save_image、publish_to_draft、get_article、list_articles
-- [ ] 挂载到 FastAPI（/mcp 端点）
-- [ ] 客户端测试（Claude Code / Cherry Studio）
+**完成内容**：
+
+1. **MCP Server（Streamable HTTP 传输）**
+   - ✅ FastMCP 实例（stateless_http 模式）
+   - ✅ 挂载到 FastAPI（/mcp/ 端点）
+   - ✅ session_manager 集成到 lifespan
+
+2. **6 个 MCP 工具**
+   - ✅ `create_article(title, content, theme_id?)` — 创建文章
+   - ✅ `update_article(article_id, title?, content?, theme_id?)` — 更新文章
+   - ✅ `get_article(article_id)` — 获取文章详情
+   - ✅ `list_articles()` — 列出所有文章
+   - ✅ `save_image(image_url?, image_base64?)` — 保存图片
+   - ✅ `publish_to_draft(article_id)` — 发布到草稿箱
+
+3. **重构**
+   - ✅ 提取 `publish_article()` 共享函数（HTTP API + MCP 共用）
+   - ✅ 添加 `BASE_URL` 环境变量支持
+   - ✅ 延迟导入避免循环引用
+
+**MCP 客户端配置**：
+```json
+{
+  "mcpServers": {
+    "wechat-publisher": {
+      "type": "streamable-http",
+      "url": "https://publisher.flyooo.uk/mcp/"
+    }
+  }
+}
+```
+
+**新增文件**：`src/mcp_server.py`
+**修改文件**：`src/main.py`
 
 ### Phase 4 - 增强功能（后续）
 

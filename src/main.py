@@ -24,6 +24,7 @@ from .html_convert import (
     list_themes as get_available_themes,
     load_themes,
 )
+from .mcp_server import mcp
 
 # 图片存储目录
 UPLOAD_DIR = Path("/app/uploads")
@@ -34,6 +35,16 @@ load_dotenv()
 templates = Jinja2Templates(directory=Path(__file__).parent.parent / "templates")
 
 wechat_api: Optional[WechatAPI] = None
+
+
+def get_base_url() -> str:
+    """获取服务 base URL（MCP 工具使用，无法从 HTTP 请求获取）"""
+    return os.getenv("BASE_URL", "https://publisher.flyooo.uk").rstrip("/")
+
+
+def get_wechat_api() -> Optional[WechatAPI]:
+    """获取微信 API 实例"""
+    return wechat_api
 
 
 @asynccontextmanager
@@ -51,7 +62,8 @@ async def lifespan(app: FastAPI):
     if appid and appsecret:
         wechat_api = WechatAPI(appid, appsecret)
 
-    yield
+    async with mcp.session_manager.run():
+        yield
 
     # 关闭时清理（如需要）
 
@@ -60,6 +72,9 @@ app = FastAPI(
     title="微信公众号发布服务",
     lifespan=lifespan
 )
+
+# 挂载 MCP Server 到 /mcp 路径
+app.mount("/mcp", mcp.streamable_http_app())
 
 
 # ========== 请求/响应模型 ==========
@@ -265,18 +280,21 @@ async def convert_local_images_to_wechat(html_content: str, base_url: str) -> st
     return result
 
 
-@app.post("/api/articles/{article_id}/publish", response_model=PublishResponse)
-async def publish_article_api(article_id: str, request: Request):
-    """发布文章到微信公众号草稿箱"""
+async def publish_article(article_id: str) -> dict:
+    """发布文章到微信公众号草稿箱（HTTP API 和 MCP 工具共用）
+
+    Returns:
+        dict: {"success": bool, "draft_media_id": str|None, "message": str}
+    """
     if not wechat_api:
-        raise HTTPException(status_code=500, detail="微信 API 未配置")
+        return {"success": False, "draft_media_id": None, "message": "微信 API 未配置"}
 
     art = article.get_article(article_id)
     if not art:
-        raise HTTPException(status_code=404, detail="文章不存在")
+        return {"success": False, "draft_media_id": None, "message": "文章不存在"}
 
     try:
-        base_url = str(request.base_url).rstrip("/")
+        base_url = get_base_url()
 
         # 转换本地图片为微信图片
         wx_html_content = await convert_local_images_to_wechat(art.html_content, base_url)
@@ -299,17 +317,23 @@ async def publish_article_api(article_id: str, request: Request):
         # 更新文章状态
         article.mark_published(article_id, draft_media_id)
 
-        return PublishResponse(
-            success=True,
-            draft_media_id=draft_media_id,
-            message="已发布到草稿箱"
-        )
+        return {"success": True, "draft_media_id": draft_media_id, "message": "已发布到草稿箱"}
 
     except Exception as e:
-        return PublishResponse(
-            success=False,
-            message=f"发布失败: {str(e)}"
-        )
+        return {"success": False, "draft_media_id": None, "message": f"发布失败: {str(e)}"}
+
+
+@app.post("/api/articles/{article_id}/publish", response_model=PublishResponse)
+async def publish_article_api(article_id: str, request: Request):
+    """发布文章到微信公众号草稿箱"""
+    result = await publish_article(article_id)
+
+    if not result["success"] and result["message"] == "微信 API 未配置":
+        raise HTTPException(status_code=500, detail="微信 API 未配置")
+    if not result["success"] and result["message"] == "文章不存在":
+        raise HTTPException(status_code=404, detail="文章不存在")
+
+    return PublishResponse(**result)
 
 
 # ========== 预览页面 ==========
