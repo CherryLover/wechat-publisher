@@ -212,11 +212,21 @@ def apply_theme_for_publish(html: str, theme_id: str = "default") -> str:
     css = _get_theme_css(theme_id)
     resolved_css = resolve_css_variables(css)
 
+    # 注入列表基础样式（大多数主题未定义，微信默认渲染会出问题）
+    list_base_css = """
+#wenyan ul { list-style-type: disc; padding-left: 2em; margin: 1em 0; }
+#wenyan ol { list-style-type: decimal; padding-left: 2em; margin: 1em 0; }
+#wenyan li { margin: 0.5em 0; }
+#wenyan li p { margin: 0; display: inline; }
+"""
+    # 主题 CSS 放后面，可以覆盖基础样式
+    combined_css = list_base_css + resolved_css
+
     # 提取伪元素规则
-    pseudo_css = _extract_pseudo_rules(resolved_css)
+    pseudo_css = _extract_pseudo_rules(combined_css)
 
     # 构建完整 HTML 文档供 css-inline 处理
-    full_html = f"""<html><head><style>{resolved_css}</style></head>
+    full_html = f"""<html><head><style>{combined_css}</style></head>
 <body><section id="wenyan">{html}</section></body></html>"""
 
     inliner = css_inline.CSSInliner(
