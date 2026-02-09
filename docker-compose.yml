@@ -1,6 +1,7 @@
 services:
   wechat-publisher:
     build: .
+    image: ghcr.io/cherrylover/wechat-publisher:latest
     container_name: wechat-publisher
     restart: unless-stopped
     networks:
