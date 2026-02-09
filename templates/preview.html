@@ -22,6 +22,7 @@
             margin: 0 auto;
             background: #fff;
             min-height: 100vh;
+            padding-bottom: 80px;
         }
 
         .preview-header {
@@ -91,6 +92,84 @@
             color: #bbb;
             margin-top: 4px;
         }
+
+        /* 底部操作栏 */
+        .action-bar {
+            position: fixed;
+            bottom: 0;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 100%;
+            max-width: 420px;
+            background: #fff;
+            border-top: 1px solid #eee;
+            padding: 12px 16px;
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            z-index: 20;
+        }
+
+        .theme-select {
+            flex: 1;
+            height: 40px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            padding: 0 10px;
+            font-size: 14px;
+            color: #333;
+            background: #f9f9f9;
+            cursor: pointer;
+            appearance: none;
+            -webkit-appearance: none;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' fill='%23999' viewBox='0 0 16 16'%3E%3Cpath d='M8 11L3 6h10z'/%3E%3C/svg%3E");
+            background-repeat: no-repeat;
+            background-position: right 10px center;
+        }
+
+        .btn-publish {
+            height: 40px;
+            padding: 0 20px;
+            border: none;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            white-space: nowrap;
+            transition: opacity 0.2s;
+            background: #07c160;
+            color: #fff;
+        }
+
+        .btn-publish:active {
+            opacity: 0.8;
+        }
+
+        .btn-publish:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+
+        /* Toast 提示 */
+        .toast {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(0, 0, 0, 0.75);
+            color: #fff;
+            padding: 12px 24px;
+            border-radius: 8px;
+            font-size: 14px;
+            z-index: 100;
+            opacity: 0;
+            transition: opacity 0.3s;
+            pointer-events: none;
+        }
+
+        .toast.show {
+            opacity: 1;
+        }
     </style>
 </head>
 <body>
@@ -103,19 +182,100 @@
             </div>
         </div>
 
-        <div class="preview-content">
+        <div class="preview-content" id="previewContent">
             {{ preview_html | safe }}
         </div>
 
         <div class="preview-footer">
             {% if article.published_at %}
-            <span class="status-badge status-published">已发布到草稿箱</span>
+            <span class="status-badge status-published" id="statusBadge">已发布到草稿箱</span>
             {% else %}
-            <span class="status-badge status-draft">待发布</span>
+            <span class="status-badge status-draft" id="statusBadge">待发布</span>
             {% endif %}
             <div class="article-id">ID: {{ article.id }}</div>
-            <div class="theme-info">主题: {{ theme_name }}</div>
+            <div class="theme-info" id="themeInfo">主题: {{ theme_name }}</div>
         </div>
     </div>
+
+    <!-- 底部操作栏 -->
+    <div class="action-bar">
+        <select class="theme-select" id="themeSelect" onchange="switchTheme()">
+            {% for theme in themes %}
+            <option value="{{ theme.id }}" {% if theme.id == article.theme_id %}selected{% endif %}>
+                {{ theme.name }}
+            </option>
+            {% endfor %}
+        </select>
+        <button class="btn-publish" id="publishBtn" onclick="publishArticle()">
+            发布到草稿箱
+        </button>
+    </div>
+
+    <!-- Toast -->
+    <div class="toast" id="toast"></div>
+
+    <script>
+        const ARTICLE_ID = "{{ article.id }}";
+
+        function showToast(msg, duration) {
+            duration = duration || 2000;
+            const el = document.getElementById('toast');
+            el.textContent = msg;
+            el.classList.add('show');
+            setTimeout(function() { el.classList.remove('show'); }, duration);
+        }
+
+        function switchTheme() {
+            const themeId = document.getElementById('themeSelect').value;
+            showToast('切换主题中...');
+
+            fetch('/api/articles/' + ARTICLE_ID, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ theme_id: themeId })
+            })
+            .then(function(r) { return r.json(); })
+            .then(function() {
+                location.reload();
+            })
+            .catch(function(e) {
+                showToast('切换失败: ' + e.message);
+            });
+        }
+
+        function publishArticle() {
+            var btn = document.getElementById('publishBtn');
+            if (btn.disabled) return;
+
+            if (!confirm('确认发布到微信公众号草稿箱？')) return;
+
+            btn.disabled = true;
+            btn.textContent = '发布中...';
+            showToast('正在发布...', 10000);
+
+            fetch('/api/articles/' + ARTICLE_ID + '/publish', {
+                method: 'POST'
+            })
+            .then(function(r) { return r.json(); })
+            .then(function(data) {
+                if (data.success) {
+                    showToast('发布成功！');
+                    var badge = document.getElementById('statusBadge');
+                    badge.textContent = '已发布到草稿箱';
+                    badge.className = 'status-badge status-published';
+                    btn.textContent = '已发布';
+                } else {
+                    showToast('发布失败: ' + data.message);
+                    btn.disabled = false;
+                    btn.textContent = '发布到草稿箱';
+                }
+            })
+            .catch(function(e) {
+                showToast('发布失败: ' + e.message);
+                btn.disabled = false;
+                btn.textContent = '发布到草稿箱';
+            });
+        }
+    </script>
 </body>
 </html>

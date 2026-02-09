@@ -362,5 +362,6 @@ async def preview_article(article_id: str, request: Request):
             "article": art,
             "preview_html": preview_html,
             "theme_name": theme_name,
+            "themes": get_available_themes(),
         }
     )
