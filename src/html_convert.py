@@ -212,10 +212,10 @@ def apply_theme_for_publish(html: str, theme_id: str = "default") -> str:
     css = _get_theme_css(theme_id)
     resolved_css = resolve_css_variables(css)
 
-    # 注入列表基础样式（大多数主题未定义，微信默认渲染会出问题）
+    # 注入列表基础样式（使用 list-style:none，后续用文本前缀替代序号）
     list_base_css = """
-#wenyan ul { list-style-type: disc; padding-left: 2em; margin: 1em 0; }
-#wenyan ol { list-style-type: decimal; padding-left: 2em; margin: 1em 0; }
+#wenyan ul { list-style: none; padding-left: 2em; margin: 1em 0; }
+#wenyan ol { list-style: none; padding-left: 2em; margin: 1em 0; }
 #wenyan li { margin: 0.5em 0; }
 #wenyan li p { margin: 0; display: inline; }
 """
@@ -254,6 +254,53 @@ def apply_theme_for_publish(html: str, theme_id: str = "default") -> str:
     return result
 
 
+def _inject_list_prefixes(html: str) -> str:
+    """
+    给列表项注入文本前缀（• 和 1. 2. 3.），同时去掉原生 list-style。
+
+    微信公众号对 list-style-type 支持不稳定，会出现多余空白序号。
+    参考 doocs/md 的做法：用文本前缀替代 CSS 序号，彻底避免渲染问题。
+    """
+    # 处理无序列表：在 <li> 内容前插入 "• "
+    def replace_ul(m: re.Match) -> str:
+        ul_tag = m.group(1)  # <ul ...>
+        ul_body = m.group(2)  # 列表内容
+        ul_close = m.group(3)  # </ul>
+
+        # 确保 list-style: none
+        if 'list-style' not in ul_tag:
+            ul_tag = ul_tag.replace('style="', 'style="list-style:none;')
+
+        # 给每个 <li> 添加 • 前缀
+        ul_body = re.sub(
+            r'(<li[^>]*>)',
+            r'\1• ',
+            ul_body
+        )
+        return ul_tag + ul_body + ul_close
+
+    # 处理有序列表：在 <li> 内容前插入 "1. " "2. " ...
+    def replace_ol(m: re.Match) -> str:
+        ol_tag = m.group(1)
+        ol_body = m.group(2)
+        ol_close = m.group(3)
+
+        if 'list-style' not in ol_tag:
+            ol_tag = ol_tag.replace('style="', 'style="list-style:none;')
+
+        counter = [0]
+        def add_number(li_match: re.Match) -> str:
+            counter[0] += 1
+            return f'{li_match.group(1)}{counter[0]}. '
+
+        ol_body = re.sub(r'(<li[^>]*>)', add_number, ol_body)
+        return ol_tag + ol_body + ol_close
+
+    html = re.sub(r'(<ul[^>]*>)(.*?)(</ul>)', replace_ul, html, flags=re.DOTALL)
+    html = re.sub(r'(<ol[^>]*>)(.*?)(</ol>)', replace_ol, html, flags=re.DOTALL)
+    return html
+
+
 def markdown_to_wechat_html(md_content: str, theme_id: str = "default") -> str:
     """
     主入口：Markdown → 微信兼容 HTML（带内联样式）。
@@ -261,4 +308,6 @@ def markdown_to_wechat_html(md_content: str, theme_id: str = "default") -> str:
     向后兼容旧调用方式。
     """
     html = markdown_to_html(md_content)
-    return apply_theme_for_publish(html, theme_id)
+    result = apply_theme_for_publish(html, theme_id)
+    result = _inject_list_prefixes(result)
+    return result
