@@ -129,9 +129,14 @@ def _article_response(art, base_url: str) -> ArticleResponse:
     )
 
 
-@app.get("/")
-async def root():
-    return {"service": "微信公众号发布服务", "status": "running"}
+@app.get("/", response_class=HTMLResponse)
+async def root(request: Request):
+    """文章列表页"""
+    articles = article.list_articles()
+    return templates.TemplateResponse(
+        "articles.html",
+        {"request": request, "articles": articles}
+    )
 
 
 @app.get("/api/themes")
