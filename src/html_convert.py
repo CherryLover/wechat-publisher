@@ -267,9 +267,12 @@ def _inject_list_prefixes(html: str) -> str:
         ul_body = m.group(2)  # 列表内容
         ul_close = m.group(3)  # </ul>
 
-        # 确保 list-style: none
-        if 'list-style' not in ul_tag:
+        # 强制 list-style: none（移除主题可能内联的 list-style-type）
+        ul_tag = re.sub(r'list-style[^;"]*:[^;"]*;?', '', ul_tag)
+        if 'style="' in ul_tag:
             ul_tag = ul_tag.replace('style="', 'style="list-style:none;')
+        else:
+            ul_tag = ul_tag.replace('>', ' style="list-style:none;">', 1)
 
         # 给每个 <li> 添加 • 前缀
         ul_body = re.sub(
@@ -285,8 +288,12 @@ def _inject_list_prefixes(html: str) -> str:
         ol_body = m.group(2)
         ol_close = m.group(3)
 
-        if 'list-style' not in ol_tag:
+        # 强制 list-style: none（移除主题可能内联的 list-style-type）
+        ol_tag = re.sub(r'list-style[^;"]*:[^;"]*;?', '', ol_tag)
+        if 'style="' in ol_tag:
             ol_tag = ol_tag.replace('style="', 'style="list-style:none;')
+        else:
+            ol_tag = ol_tag.replace('>', ' style="list-style:none;">', 1)
 
         counter = [0]
         def add_number(li_match: re.Match) -> str:
