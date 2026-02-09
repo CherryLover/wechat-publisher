@@ -4,14 +4,16 @@
 
 import os
 import re
+import secrets
 import uuid
 import httpx
 from pathlib import Path
 from contextlib import asynccontextmanager
-from fastapi import FastAPI, HTTPException, Request, UploadFile, File
-from fastapi.responses import HTMLResponse, FileResponse
+from fastapi import FastAPI, HTTPException, Request, UploadFile, File, Depends
+from fastapi.responses import HTMLResponse, FileResponse, JSONResponse
 from fastapi.templating import Jinja2Templates
 from pydantic import BaseModel
+from starlette.types import ASGIApp, Receive, Scope, Send
 from typing import Optional
 from dotenv import load_dotenv
 
@@ -23,6 +25,13 @@ from .html_convert import (
     apply_theme_for_preview,
     list_themes as get_available_themes,
     load_themes,
+)
+from .auth import (
+    verify_auth_token,
+    verify_preview_token,
+    verify_bearer_or_preview_token,
+    create_preview_token,
+    AUTH_TOKEN,
 )
 from .mcp_server import mcp
 
@@ -73,8 +82,34 @@ app = FastAPI(
     lifespan=lifespan
 )
 
-# 挂载 MCP Server 到 /mcp 路径
-app.mount("/mcp", mcp.streamable_http_app())
+
+# ========== MCP 鉴权中间件 ==========
+
+class MCPAuthMiddleware:
+    """ASGI 中间件：在请求到达 MCP app 前校验 Bearer Token"""
+
+    def __init__(self, app: ASGIApp):
+        self.app = app
+
+    async def __call__(self, scope: Scope, receive: Receive, send: Send):
+        if scope["type"] == "http" and AUTH_TOKEN:
+            headers = dict(scope.get("headers", []))
+            auth_value = headers.get(b"authorization", b"").decode()
+            if not (auth_value.startswith("Bearer ") and
+                    secrets.compare_digest(auth_value[7:], AUTH_TOKEN)):
+                response = JSONResponse(
+                    status_code=401,
+                    content={"detail": "未授权访问"},
+                )
+                await response(scope, receive, send)
+                return
+
+        await self.app(scope, receive, send)
+
+
+# 挂载 MCP Server 到 /mcp 路径（包裹鉴权中间件）
+mcp_app = mcp.streamable_http_app()
+app.mount("/mcp", MCPAuthMiddleware(mcp_app))
 
 
 # ========== 请求/响应模型 ==========
@@ -130,25 +165,39 @@ def _article_response(art, base_url: str) -> ArticleResponse:
 
 
 @app.get("/", response_class=HTMLResponse)
-async def root(request: Request):
+async def root(request: Request, token: Optional[str] = None):
     """文章列表页"""
-    articles = article.list_articles()
+    if not verify_preview_token(token):
+        return HTMLResponse(
+            content="<h1>401 未授权</h1><p>请使用带 token 的链接访问</p>",
+            status_code=401,
+        )
+    articles_list = article.list_articles()
     return templates.TemplateResponse(
         "articles.html",
-        {"request": request, "articles": articles}
+        {"request": request, "articles": articles_list, "token": token or ""}
     )
 
 
 @app.get("/api/themes")
-async def list_themes_api():
+async def list_themes_api(_=Depends(verify_auth_token)):
     """获取可用主题列表"""
     return get_available_themes()
+
+
+# ========== 临时 Token 端点 ==========
+
+@app.post("/api/preview-token")
+async def create_preview_token_api(request: Request, _=Depends(verify_auth_token)):
+    """换取临时预览 token（需要主 token 鉴权）"""
+    result = create_preview_token()
+    return result
 
 
 # ========== 图片上传 ==========
 
 @app.post("/api/images", response_model=UploadImageResponse)
-async def save_image(request: Request, file: UploadFile = File(...)):
+async def save_image(request: Request, file: UploadFile = File(...), _=Depends(verify_auth_token)):
     """保存图片到本地存储"""
     # 生成唯一文件名
     ext = Path(file.filename).suffix or ".png"
@@ -170,14 +219,16 @@ async def save_image(request: Request, file: UploadFile = File(...)):
 @app.get("/images/{filename}")
 async def get_image(filename: str):
     """获取本地图片"""
-    file_path = UPLOAD_DIR / filename
+    file_path = (UPLOAD_DIR / filename).resolve()
+    if not file_path.is_relative_to(UPLOAD_DIR.resolve()):
+        raise HTTPException(status_code=400, detail="非法文件名")
     if not file_path.exists():
         raise HTTPException(status_code=404, detail="图片不存在")
     return FileResponse(file_path)
 
 
 @app.post("/api/articles", response_model=ArticleResponse)
-async def create_article_api(req: CreateArticleRequest, request: Request):
+async def create_article_api(req: CreateArticleRequest, request: Request, _=Depends(verify_auth_token)):
     """创建文章"""
     html_content = markdown_to_wechat_html(req.content, req.theme_id)
     art = article.create_article(req.title, req.content, html_content, req.theme_id)
@@ -187,7 +238,7 @@ async def create_article_api(req: CreateArticleRequest, request: Request):
 
 
 @app.get("/api/articles/{article_id}", response_model=ArticleResponse)
-async def get_article_api(article_id: str, request: Request):
+async def get_article_api(article_id: str, request: Request, _=Depends(verify_auth_token)):
     """获取文章"""
     art = article.get_article(article_id)
     if not art:
@@ -198,8 +249,9 @@ async def get_article_api(article_id: str, request: Request):
 
 
 @app.put("/api/articles/{article_id}", response_model=ArticleResponse)
-async def update_article_api(article_id: str, req: UpdateArticleRequest, request: Request):
-    """更新文章"""
+async def update_article_api(article_id: str, req: UpdateArticleRequest, request: Request, token: Optional[str] = None):
+    """更新文章。同时接受主 Bearer Token 和临时预览 Token。"""
+    verify_bearer_or_preview_token(request, token)
     # 需要重新渲染 HTML 的情况：内容变了，或主题变了
     existing = article.get_article(article_id)
     if not existing:
@@ -221,7 +273,7 @@ async def update_article_api(article_id: str, req: UpdateArticleRequest, request
 
 
 @app.get("/api/articles")
-async def list_articles_api(request: Request):
+async def list_articles_api(request: Request, _=Depends(verify_auth_token)):
     """列出所有文章"""
     articles = article.list_articles()
     base_url = str(request.base_url).rstrip("/")
@@ -329,8 +381,13 @@ async def publish_article(article_id: str) -> dict:
 
 
 @app.post("/api/articles/{article_id}/publish", response_model=PublishResponse)
-async def publish_article_api(article_id: str, request: Request):
-    """发布文章到微信公众号草稿箱"""
+async def publish_article_api(article_id: str, request: Request, token: Optional[str] = None):
+    """发布文章到微信公众号草稿箱。
+
+    同时接受主 Bearer Token 和临时预览 Token（query param）。
+    """
+    verify_bearer_or_preview_token(request, token)
+
     result = await publish_article(article_id)
 
     if not result["success"] and result["message"] == "微信 API 未配置":
@@ -344,8 +401,14 @@ async def publish_article_api(article_id: str, request: Request):
 # ========== 预览页面 ==========
 
 @app.get("/preview/{article_id}", response_class=HTMLResponse)
-async def preview_article(article_id: str, request: Request):
+async def preview_article(article_id: str, request: Request, token: Optional[str] = None):
     """文章预览页面"""
+    if not verify_preview_token(token):
+        return HTMLResponse(
+            content="<h1>401 未授权</h1><p>请使用带 token 的链接访问</p>",
+            status_code=401,
+        )
+
     art = article.get_article(article_id)
     if not art:
         raise HTTPException(status_code=404, detail="文章不存在")
@@ -368,5 +431,6 @@ async def preview_article(article_id: str, request: Request):
             "preview_html": preview_html,
             "theme_name": theme_name,
             "themes": get_available_themes(),
+            "token": token or "",
         }
     )

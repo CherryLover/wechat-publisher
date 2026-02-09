@@ -72,9 +72,9 @@
 
 ### 需要的配置
 
-- 微信公众号 AppID
-- 微信公众号 AppSecret
-- （可选）访问密钥，防止 MCP 端点被未授权访问
+- 微信公众号 AppID（`WX_APPID`）
+- 微信公众号 AppSecret（`WX_APPSECRET`）
+- 访问密钥（`AUTH_TOKEN`）：保护 API 和 MCP 端点，未设置时跳过鉴权
 
 ### 功能规划
 
@@ -152,7 +152,7 @@ wechat-publisher/
 | Phase 1 | API 验证 + HTTP 服务 + 部署 | ✅ 已完成 |
 | Phase 2 | 文章排版样式（集成文颜主题） | ✅ 已完成 |
 | Phase 3 | MCP Server | ✅ 已完成 |
-| Phase 4 | 增强功能（封面图、鉴权、清理等） | 🔲 待开始 |
+| Phase 4 | 增强功能（封面图、鉴权、清理等） | 🔄 进行中 |
 
 ### Phase 1 - 基础服务（已完成）
 
@@ -182,16 +182,18 @@ wechat-publisher/
 
 **当前 API**：
 
-| 接口 | 方法 | 说明 |
-|------|------|------|
-| `/api/images` | POST | 保存图片到本地 |
-| `/api/articles` | POST | 创建文章 |
-| `/api/articles` | GET | 列出所有文章 |
-| `/api/articles/{id}` | GET | 获取文章 |
-| `/api/articles/{id}` | PUT | 更新文章 |
-| `/api/articles/{id}/publish` | POST | 发布到草稿箱 |
-| `/preview/{id}` | GET | 预览页面 |
-| `/images/{filename}` | GET | 获取本地图片 |
+| 接口 | 方法 | 鉴权 | 说明 |
+|------|------|------|------|
+| `/api/preview-token` | POST | Bearer Token | 换取临时预览 token |
+| `/api/images` | POST | Bearer Token | 保存图片到本地 |
+| `/api/articles` | POST | Bearer Token | 创建文章 |
+| `/api/articles` | GET | Bearer Token | 列出所有文章 |
+| `/api/articles/{id}` | GET | Bearer Token | 获取文章 |
+| `/api/articles/{id}` | PUT | Bearer / 临时 Token | 更新文章 |
+| `/api/articles/{id}/publish` | POST | Bearer / 临时 Token | 发布到草稿箱 |
+| `/preview/{id}` | GET | 临时 Token (query) | 预览页面 |
+| `/` | GET | 临时 Token (query) | 文章列表页 |
+| `/images/{filename}` | GET | 无 | 获取本地图片 |
 
 **图片处理流程**：
 ```
@@ -243,7 +245,10 @@ wechat-publisher/
   "mcpServers": {
     "wechat-publisher": {
       "type": "streamable-http",
-      "url": "https://publisher.flyooo.uk/mcp/"
+      "url": "https://publisher.flyooo.uk/mcp/",
+      "headers": {
+        "Authorization": "Bearer <AUTH_TOKEN>"
+      }
     }
   }
 }
@@ -252,13 +257,27 @@ wechat-publisher/
 **新增文件**：`src/mcp_server.py`
 **修改文件**：`src/main.py`
 
-### Phase 4 - 增强功能（后续）
+### Phase 4 - 增强功能（进行中）
+
+**已完成**：
+- [x] API 和 MCP 端点鉴权（Bearer Token，环境变量 `AUTH_TOKEN` 配置）
+- [x] 网页预览鉴权（临时 Token，8 小时有效，JSON 文件存储）
+- [x] MCP 工具返回的预览链接自动带临时 Token
+- [x] 预览页操作（主题切换、发布）自动传递 Token
+
+**鉴权方案说明**：
+- **主 Token**（`AUTH_TOKEN` 环境变量）：保护 `/api/*` 和 `/mcp/*` 端点，Bearer Token 方式
+- **临时 Token**：保护网页预览（`/` 和 `/preview/{id}`），8 小时有效，通过 `POST /api/preview-token` 换取
+- **预览页操作**（主题切换、发布到草稿箱）同时接受主 Token 和临时 Token
+- **图片路由** `/images/{filename}` 不做鉴权（文件名随机，无安全风险）
+- 未设置 `AUTH_TOKEN` 时所有鉴权跳过（本地开发兼容）
+
+**新增文件**：`src/auth.py`
+**修改文件**：`src/main.py`, `src/mcp_server.py`, `templates/preview.html`, `templates/articles.html`
 
 **待实现**：
 - [ ] 封面图支持指定（目前用随机图片）
-- [ ] MCP 端点访问控制（API Key 鉴权）
 - [ ] 本地图片定期清理（7 天过期）
-- [ ] 预览页支持「确认发布」按钮
 
 ---
 

@@ -215,7 +215,8 @@
     <div class="toast" id="toast"></div>
 
     <script>
-        const ARTICLE_ID = "{{ article.id }}";
+        const ARTICLE_ID = {{ article.id | tojson }};
+        const PREVIEW_TOKEN = {{ token | tojson }};
 
         function showToast(msg, duration) {
             duration = duration || 2000;
@@ -229,14 +230,23 @@
             const themeId = document.getElementById('themeSelect').value;
             showToast('切换主题中...');
 
-            fetch('/api/articles/' + ARTICLE_ID, {
+            var url = '/api/articles/' + ARTICLE_ID;
+            if (PREVIEW_TOKEN) url += '?token=' + encodeURIComponent(PREVIEW_TOKEN);
+
+            fetch(url, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ theme_id: themeId })
             })
-            .then(function(r) { return r.json(); })
+            .then(function(r) {
+                if (!r.ok) throw new Error('HTTP ' + r.status);
+                return r.json();
+            })
             .then(function() {
-                location.reload();
+                // 刷新时保留 token
+                var reloadUrl = location.pathname;
+                if (PREVIEW_TOKEN) reloadUrl += '?token=' + encodeURIComponent(PREVIEW_TOKEN);
+                location.href = reloadUrl;
             })
             .catch(function(e) {
                 showToast('切换失败: ' + e.message);
@@ -253,10 +263,16 @@
             btn.textContent = '发布中...';
             showToast('正在发布...', 10000);
 
-            fetch('/api/articles/' + ARTICLE_ID + '/publish', {
+            var url = '/api/articles/' + ARTICLE_ID + '/publish';
+            if (PREVIEW_TOKEN) url += '?token=' + encodeURIComponent(PREVIEW_TOKEN);
+
+            fetch(url, {
                 method: 'POST'
             })
-            .then(function(r) { return r.json(); })
+            .then(function(r) {
+                if (!r.ok) throw new Error('HTTP ' + r.status);
+                return r.json();
+            })
             .then(function(data) {
                 if (data.success) {
                     showToast('发布成功！');

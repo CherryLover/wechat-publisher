@@ -141,7 +141,7 @@
         {% if articles %}
         <div class="article-list">
             {% for art in articles %}
-            <a class="article-card" href="/preview/{{ art.id }}">
+            <a class="article-card" href="/preview/{{ art.id }}{% if token %}?token={{ token }}{% endif %}">
                 <div class="card-top">
                     <div class="card-title">{{ art.title }}</div>
                     {% if art.published_at %}

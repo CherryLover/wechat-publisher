@@ -22,6 +22,7 @@ from mcp.server.fastmcp import FastMCP
 
 from . import article
 from .html_convert import markdown_to_wechat_html
+from .auth import create_preview_token, AUTH_TOKEN
 
 # 图片存储目录（与 main.py 共用）
 UPLOAD_DIR = Path("/app/uploads")
@@ -37,6 +38,28 @@ mcp = FastMCP(
 def _get_base_url() -> str:
     """获取服务 base URL"""
     return os.getenv("BASE_URL", "https://publisher.flyooo.uk").rstrip("/")
+
+
+def _make_preview_url(article_id: str, preview_token: Optional[str] = None) -> str:
+    """生成带临时 token 的预览链接。
+
+    Args:
+        article_id: 文章 ID
+        preview_token: 复用的临时 token。未传入时自动生成新 token。
+    """
+    base_url = _get_base_url()
+    url = f"{base_url}/preview/{article_id}"
+    if AUTH_TOKEN:
+        token = preview_token or create_preview_token()["token"]
+        url += f"?token={token}"
+    return url
+
+
+def _get_or_create_token() -> Optional[str]:
+    """获取一个临时 token（供批量操作复用）。AUTH_TOKEN 未配置时返回 None。"""
+    if not AUTH_TOKEN:
+        return None
+    return create_preview_token()["token"]
 
 
 @mcp.tool()
@@ -60,12 +83,11 @@ async def create_article(
     html_content = markdown_to_wechat_html(content, theme_id)
     art = article.create_article(title, content, html_content, theme_id)
 
-    base_url = _get_base_url()
     return json.dumps({
         "article_id": art.id,
         "title": art.title,
         "theme_id": art.theme_id,
-        "preview_url": f"{base_url}/preview/{art.id}",
+        "preview_url": _make_preview_url(art.id),
         "created_at": art.created_at,
     }, ensure_ascii=False)
 
@@ -103,12 +125,11 @@ async def update_article(
     if not art:
         return json.dumps({"error": "更新失败"}, ensure_ascii=False)
 
-    base_url = _get_base_url()
     return json.dumps({
         "article_id": art.id,
         "title": art.title,
         "theme_id": art.theme_id,
-        "preview_url": f"{base_url}/preview/{art.id}",
+        "preview_url": _make_preview_url(art.id),
         "updated_at": art.updated_at,
     }, ensure_ascii=False)
 
@@ -127,13 +148,12 @@ async def get_article(article_id: str) -> str:
     if not art:
         return json.dumps({"error": "文章不存在"}, ensure_ascii=False)
 
-    base_url = _get_base_url()
     return json.dumps({
         "article_id": art.id,
         "title": art.title,
         "content": art.content,
         "theme_id": art.theme_id,
-        "preview_url": f"{base_url}/preview/{art.id}",
+        "preview_url": _make_preview_url(art.id),
         "created_at": art.created_at,
         "updated_at": art.updated_at,
         "published_at": art.published_at,
@@ -148,7 +168,7 @@ async def list_articles() -> str:
         JSON 字符串，包含文章列表（id、标题、主题、创建时间、发布状态）
     """
     articles = article.list_articles()
-    base_url = _get_base_url()
+    token = _get_or_create_token()
 
     result = []
     for art in articles:
@@ -156,7 +176,7 @@ async def list_articles() -> str:
             "article_id": art.id,
             "title": art.title,
             "theme_id": art.theme_id,
-            "preview_url": f"{base_url}/preview/{art.id}",
+            "preview_url": _make_preview_url(art.id, preview_token=token),
             "created_at": art.created_at,
             "updated_at": art.updated_at,
             "published_at": art.published_at,
