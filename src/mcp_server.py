@@ -241,6 +241,50 @@ async def save_image(
 
 
 @mcp.tool()
+async def generate_image(
+    prompt: str,
+    aspect_ratio: str = "1:1",
+) -> str:
+    """使用 AI 生成图片，返回可在 Markdown 中引用的图片 URL。
+
+    可用于生成文章配图或封面图。英文 prompt 效果更好。
+
+    Args:
+        prompt: 图片描述，例如 "A cat reading a book, watercolor style"
+        aspect_ratio: 宽高比，可选值：1:1, 3:4, 4:3, 9:16, 16:9。默认 1:1
+
+    Returns:
+        JSON 字符串，包含图片 URL 和 Markdown 引用
+    """
+    from .main import get_imagen_api
+
+    api = get_imagen_api()
+    if not api:
+        return json.dumps({"error": "Imagen API 未配置，请设置 IMAGEN_API_KEY 环境变量"}, ensure_ascii=False)
+
+    try:
+        image_data = await api.generate(prompt, aspect_ratio)
+
+        filename = f"{uuid.uuid4().hex}.png"
+        UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
+        file_path = UPLOAD_DIR / filename
+        with open(file_path, "wb") as f:
+            f.write(image_data)
+
+        base_url = _get_base_url()
+        image_url = f"{base_url}/images/{filename}"
+
+        return json.dumps({
+            "url": image_url,
+            "filename": filename,
+            "markdown": f"![image]({image_url})",
+        }, ensure_ascii=False)
+
+    except Exception as e:
+        return json.dumps({"error": f"图片生成失败: {str(e)}"}, ensure_ascii=False)
+
+
+@mcp.tool()
 async def publish_to_draft(article_id: str) -> str:
     """将文章发布到微信公众号草稿箱。
 

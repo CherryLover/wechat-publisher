@@ -33,6 +33,7 @@ from .auth import (
     create_preview_token,
     AUTH_TOKEN,
 )
+from .imagen import ImagenAPI
 from .mcp_server import mcp
 
 # 图片存储目录
@@ -44,6 +45,7 @@ load_dotenv()
 templates = Jinja2Templates(directory=Path(__file__).parent.parent / "templates")
 
 wechat_api: Optional[WechatAPI] = None
+imagen_api: Optional[ImagenAPI] = None
 
 
 def get_base_url() -> str:
@@ -56,10 +58,15 @@ def get_wechat_api() -> Optional[WechatAPI]:
     return wechat_api
 
 
+def get_imagen_api() -> Optional[ImagenAPI]:
+    """获取 Imagen API 实例"""
+    return imagen_api
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """应用生命周期"""
-    global wechat_api
+    global wechat_api, imagen_api
 
     # 启动时初始化
     article.init_db()
@@ -70,6 +77,10 @@ async def lifespan(app: FastAPI):
     appsecret = os.getenv("WX_APPSECRET")
     if appid and appsecret:
         wechat_api = WechatAPI(appid, appsecret)
+
+    imagen_api_key = os.getenv("IMAGEN_API_KEY")
+    if imagen_api_key:
+        imagen_api = ImagenAPI(imagen_api_key)
 
     async with mcp.session_manager.run():
         yield
@@ -213,6 +224,34 @@ async def save_image(request: Request, file: UploadFile = File(...), _=Depends(v
     return UploadImageResponse(
         url=f"{base_url}/images/{filename}",
         filename=filename
+    )
+
+
+class GenerateImageRequest(BaseModel):
+    prompt: str
+    aspect_ratio: str = "1:1"
+
+
+@app.post("/api/generate-image", response_model=UploadImageResponse)
+async def generate_image_api(req: GenerateImageRequest, request: Request, _=Depends(verify_auth_token)):
+    """使用 AI 生成图片"""
+    if not imagen_api:
+        raise HTTPException(status_code=500, detail="Imagen API 未配置")
+
+    try:
+        image_data = await imagen_api.generate(req.prompt, req.aspect_ratio)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"图片生成失败: {str(e)}")
+
+    filename = f"{uuid.uuid4().hex}.png"
+    file_path = UPLOAD_DIR / filename
+    with open(file_path, "wb") as f:
+        f.write(image_data)
+
+    base_url = str(request.base_url).rstrip("/")
+    return UploadImageResponse(
+        url=f"{base_url}/images/{filename}",
+        filename=filename,
     )
 
 
