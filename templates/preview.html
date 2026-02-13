@@ -38,6 +38,19 @@
             font-size: 12px;
             color: #999;
             margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .back-link {
+            font-size: 13px;
+            color: #07c160;
+            text-decoration: none;
+        }
+
+        .back-link:active {
+            opacity: 0.7;
         }
 
         .preview-title {
@@ -175,7 +188,10 @@
 <body>
     <div class="preview-container">
         <div class="preview-header">
-            <div class="preview-label">文章预览</div>
+            <div class="preview-label">
+                <span>文章预览</span>
+                <a class="back-link" href="/{% if token %}?token={{ token }}{% endif %}">← 文章列表</a>
+            </div>
             <h1 class="preview-title">{{ article.title }}</h1>
             <div class="preview-meta">
                 更新于 {{ article.updated_at[:16].replace('T', ' ') }}
@@ -276,10 +292,11 @@
             .then(function(data) {
                 if (data.success) {
                     showToast('发布成功！');
-                    var badge = document.getElementById('statusBadge');
-                    badge.textContent = '已发布到草稿箱';
-                    badge.className = 'status-badge status-published';
-                    btn.textContent = '已发布';
+                    setTimeout(function() {
+                        var reloadUrl = location.pathname;
+                        if (PREVIEW_TOKEN) reloadUrl += '?token=' + encodeURIComponent(PREVIEW_TOKEN);
+                        location.href = reloadUrl;
+                    }, 1000);
                 } else {
                     showToast('发布失败: ' + data.message);
                     btn.disabled = false;
