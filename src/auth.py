@@ -111,7 +111,7 @@ def create_preview_token() -> dict:
     # 先清理过期 token
     cleanup_expired_tokens()
 
-    token = secrets.token_urlsafe(32)
+    token = secrets.token_hex(24)
     now = datetime.now()
     expires_at = now + timedelta(hours=PREVIEW_TOKEN_EXPIRY_HOURS)
 
