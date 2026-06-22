@@ -416,7 +416,10 @@ async def publish_article(article_id: str) -> dict:
         return {"success": True, "draft_media_id": draft_media_id, "message": "已发布到草稿箱"}
 
     except Exception as e:
-        return {"success": False, "draft_media_id": None, "message": f"发布失败: {str(e)}"}
+        import traceback
+        traceback.print_exc()
+        err_msg = f"{type(e).__name__}: {e}" if str(e) else f"{type(e).__name__}: {repr(e)}"
+        return {"success": False, "draft_media_id": None, "message": f"发布失败: {err_msg}"}
 
 
 @app.post("/api/articles/{article_id}/publish", response_model=PublishResponse)
