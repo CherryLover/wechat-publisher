@@ -395,13 +395,12 @@ async def publish_article(article_id: str) -> dict:
         # 转换本地图片为微信图片
         wx_html_content = await convert_local_images_to_wechat(art.html_content, base_url)
 
-        # 下载一张默认封面图（暂时用随机图片）
-        async with httpx.AsyncClient() as client:
-            resp = await client.get("https://picsum.photos/900/500", follow_redirects=True)
-            thumb_data = resp.content
+        # 读取默认封面图
+        default_cover = Path(__file__).parent.parent / "static" / "default_cover.png"
+        thumb_data = default_cover.read_bytes()
 
         # 上传封面图
-        thumb_media_id = await wechat_api.upload_thumb(thumb_data)
+        thumb_media_id = await wechat_api.upload_thumb(thumb_data, "cover.png")
 
         # 创建草稿
         draft_media_id = await wechat_api.create_draft(

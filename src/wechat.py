@@ -59,12 +59,13 @@ class WechatAPI:
     async def upload_thumb(self, image_data: bytes, filename: str = "thumb.jpg") -> str:
         """上传封面图（永久素材），返回 media_id"""
         token = await self.get_access_token()
+        content_type = "image/png" if filename.endswith(".png") else "image/jpeg"
 
         async with httpx.AsyncClient() as client:
             resp = await client.post(
                 f"{self.BASE_URL}/material/add_material",
                 params={"access_token": token, "type": "image"},
-                files={"media": (filename, image_data, "image/jpeg")}
+                files={"media": (filename, image_data, content_type)}
             )
             data = resp.json()
 
