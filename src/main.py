@@ -395,12 +395,25 @@ async def publish_article(article_id: str) -> dict:
         # 转换本地图片为微信图片
         wx_html_content = await convert_local_images_to_wechat(art.html_content, base_url)
 
-        # 读取默认封面图
-        default_cover = Path(__file__).parent.parent / "static" / "default_cover.png"
-        thumb_data = default_cover.read_bytes()
+        # 从 Unsplash 获取随机封面图（900x383, 质量 80%）
+        unsplash_key = os.getenv("UNSPLASH_ACCESS_KEY")
+        if unsplash_key:
+            async with httpx.AsyncClient(timeout=15) as client:
+                api_resp = await client.get(
+                    "https://api.unsplash.com/photos/random",
+                    headers={"Authorization": f"Client-ID {unsplash_key}"},
+                    params={"orientation": "landscape", "query": "nature"},
+                )
+                raw_url = api_resp.json()["urls"]["raw"]
+                cover_url = f"{raw_url}&w=900&h=383&fit=crop&q=80"
+                img_resp = await client.get(cover_url, follow_redirects=True)
+                thumb_data = img_resp.content
+        else:
+            default_cover = Path(__file__).parent.parent / "static" / "default_cover.png"
+            thumb_data = default_cover.read_bytes()
 
         # 上传封面图
-        thumb_media_id = await wechat_api.upload_thumb(thumb_data, "cover.png")
+        thumb_media_id = await wechat_api.upload_thumb(thumb_data, "cover.jpg")
 
         # 创建草稿
         draft_media_id = await wechat_api.create_draft(
