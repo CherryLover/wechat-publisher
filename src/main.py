@@ -36,6 +36,7 @@ from .auth import (
 from .imagen import ImagenAPI
 from .mcp_server import mcp
 from .notion_webhook import router as notion_router
+from .web import router as web_router
 
 # 图片存储目录
 UPLOAD_DIR = Path(os.getenv("UPLOAD_DIR", "/app/uploads"))
@@ -96,6 +97,7 @@ app = FastAPI(
 
 # Notion Webhook（状态改成「发布」自动推草稿箱）
 app.include_router(notion_router)
+app.include_router(web_router)
 
 
 # ========== MCP 鉴权中间件 ==========
@@ -176,21 +178,6 @@ def _article_response(art, base_url: str) -> ArticleResponse:
         created_at=art.created_at,
         updated_at=art.updated_at,
         published_at=art.published_at
-    )
-
-
-@app.get("/", response_class=HTMLResponse)
-async def root(request: Request, token: Optional[str] = None):
-    """文章列表页"""
-    if not verify_preview_token(token):
-        return HTMLResponse(
-            content="<h1>401 未授权</h1><p>请使用带 token 的链接访问</p>",
-            status_code=401,
-        )
-    articles_list = article.list_articles()
-    return templates.TemplateResponse(
-        "articles.html",
-        {"request": request, "articles": articles_list, "token": token or ""}
     )
 
 
@@ -459,7 +446,8 @@ async def publish_article_api(article_id: str, request: Request, token: Optional
 # ========== 预览页面 ==========
 
 @app.get("/preview/{article_id}", response_class=HTMLResponse)
-async def preview_article(article_id: str, request: Request, token: Optional[str] = None):
+async def preview_article(article_id: str, request: Request, token: Optional[str] = None,
+                          theme: Optional[str] = None):
     """文章预览页面"""
     if not verify_preview_token(token):
         return HTMLResponse(
@@ -472,13 +460,15 @@ async def preview_article(article_id: str, request: Request, token: Optional[str
         raise HTTPException(status_code=404, detail="文章不存在")
 
     # 从 Markdown 实时渲染 + CSS（预览用完整 CSS，非内联）
+    # 支持用 ?theme= 临时预览某个主题（设置页换主题看效果用）
+    use_theme = theme or art.theme_id
     raw_html = markdown_to_html(art.content)
-    preview_html = apply_theme_for_preview(raw_html, art.theme_id)
+    preview_html = apply_theme_for_preview(raw_html, use_theme)
 
     # 获取主题名称
     theme_name = next(
-        (t["name"] for t in get_available_themes() if t["id"] == art.theme_id),
-        art.theme_id
+        (t["name"] for t in get_available_themes() if t["id"] == use_theme),
+        use_theme
     )
 
     return templates.TemplateResponse(

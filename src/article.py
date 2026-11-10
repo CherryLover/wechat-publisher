@@ -171,3 +171,49 @@ def list_articles() -> list[Article]:
     conn.close()
 
     return [_row_to_article(row) for row in rows]
+
+
+def init_source_columns():
+    """给老库补 source / source_id 列（Notion 来源的文章用）"""
+    conn = sqlite3.connect(DB_PATH)
+    for stmt in (
+        "ALTER TABLE articles ADD COLUMN source TEXT",
+        "ALTER TABLE articles ADD COLUMN source_id TEXT",
+    ):
+        try:
+            conn.execute(stmt)
+        except sqlite3.OperationalError:
+            pass
+    conn.commit()
+    conn.close()
+
+
+def upsert_from_source(title: str, content: str, html_content: str,
+                       theme_id: str, source: str, source_id: str) -> str:
+    """按来源 upsert 一篇文章，返回文章 id"""
+    init_db()
+    init_source_columns()
+    now = datetime.now().isoformat()
+    conn = sqlite3.connect(DB_PATH)
+    try:
+        row = conn.execute(
+            "SELECT id FROM articles WHERE source = ? AND source_id = ?",
+            (source, source_id),
+        ).fetchone()
+        if row:
+            conn.execute(
+                "UPDATE articles SET title=?, content=?, html_content=?, theme_id=?, updated_at=? WHERE id=?",
+                (title, content, html_content, theme_id, now, row[0]),
+            )
+            conn.commit()
+            return row[0]
+        new_id = uuid.uuid4().hex[:8]
+        conn.execute(
+            "INSERT INTO articles (id, title, content, html_content, created_at, updated_at, theme_id, source, source_id)"
+            " VALUES (?,?,?,?,?,?,?,?,?)",
+            (new_id, title, content, html_content, now, now, theme_id, source, source_id),
+        )
+        conn.commit()
+        return new_id
+    finally:
+        conn.close()

@@ -12,8 +12,11 @@ from typing import Optional
 
 import httpx
 
+from . import article as article_store
+from .config import get_theme
 from .html_convert import markdown_to_wechat_html
 from .notion_source import NotionSource, NotionError, page_to_markdown
+from .notify import notify_event
 from .wechat import WechatAPI
 
 logger = logging.getLogger(__name__)
@@ -140,11 +143,15 @@ async def publish_page(
     if status != trigger:
         return {"success": False, "message": f"状态为「{status}」，不是「{trigger}」，跳过", "draft_media_id": None}
 
+    title_hint = NotionSource.prop_text(page, "标题") or "(无标题)"
+
     # 标记发布中，避免重复触发
     try:
         await source.set_select(page_id, "状态", STATUS_RUNNING)
     except NotionError as e:
         logger.warning("设置发布中失败: %s", e)
+
+    await notify_event("start", "开始发布", f"「{title_hint}」正在处理…")
 
     try:
         title, md = await page_to_markdown(source, page_id)
@@ -153,7 +160,8 @@ async def publish_page(
 
         md, first_image = await _transfer_images(md, wechat)
 
-        html = markdown_to_wechat_html(md, "default")
+        theme_id = get_theme()
+        html = markdown_to_wechat_html(md, theme_id)
 
         cover = await _pick_cover(first_image, wechat, os.getenv("UNSPLASH_ACCESS_KEY", ""))
         thumb_media_id = await wechat.upload_thumb(cover, "cover.jpg")
@@ -166,7 +174,17 @@ async def publish_page(
             digest=_digest(md),
         )
 
+        # 写入本地文章库，让主页能看到、预览能用
+        try:
+            article_store.upsert_from_source(
+                title=title, content=md, html_content=html,
+                theme_id=theme_id, source="notion", source_id=page_id,
+            )
+        except Exception as store_err:
+            logger.warning("写入文章库失败: %s", store_err)
+
         await source.set_select(page_id, "状态", STATUS_PUBLISHED)
+        await notify_event("success", "发布成功", f"「{title}」已进草稿箱，去后台点发表。")
         return {"success": True, "message": f"已发布到草稿箱（{len(md)} 字）", "draft_media_id": media_id}
 
     except Exception as e:
@@ -179,4 +197,5 @@ async def publish_page(
             await source.set_rich_text(page_id, "迁移备注", f"发布失败：{msg}"[:1900])
         except Exception:
             logger.error("回写失败状态也失败了")
+        await notify_event("error", "发布失败", f"「{title_hint}」没发出去：{msg[:120]}", level="timeSensitive")
         return {"success": False, "message": msg, "draft_media_id": None}

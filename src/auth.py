@@ -21,7 +21,7 @@ load_dotenv()
 AUTH_TOKEN = os.getenv("AUTH_TOKEN")
 
 # 临时 token 数据库路径（与 article.py 共用同一目录）
-_TOKEN_DB_PATH = Path("/app/data/articles.db")
+_TOKEN_DB_PATH = Path(os.getenv("DATA_DIR", "/app/data")) / "articles.db"
 
 # 临时 token 有效期（小时）
 PREVIEW_TOKEN_EXPIRY_HOURS = 8

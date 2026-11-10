@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>发布台 · 登录</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+body{margin:0;background:#fafafa;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif;-webkit-font-smoothing:antialiased}
+a{color:#07c160;text-decoration:none}
+a:hover{color:#06a852}
+</style>
+</helmet>
+
+<div style="min-height:760px;display:flex;align-items:center;justify-content:center;padding:40px 24px">
+
+  <div style="width:400px;max-width:100%">
+
+    <div style="display:flex;flex-direction:column;align-items:center;margin-bottom:22px">
+      <span style="width:44px;height:44px;border-radius:11px;background:#07c160;display:flex;align-items:center;justify-content:center;margin-bottom:14px">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m22 2-7 20-4-9-9-4Z"/><path d="M22 2 11 13"/></svg>
+      </span>
+      <div style="font-size:15px;font-weight:600;color:#09090b">程序杂念 · 发布台</div>
+      <div style="font-size:13px;color:#71717a;margin-top:4px">把 Notion 的文章送到公众号草稿箱</div>
+    </div>
+
+    <div style="background:#ffffff;border:1px solid #e4e4e7;border-radius:10px;box-shadow:0 1px 2px rgba(0,0,0,.05);padding:26px 24px 22px">
+
+      <h1 style="margin:0 0 6px;font-size:17px;font-weight:600;color:#09090b">登录</h1>
+      <p style="margin:0 0 20px;font-size:13px;color:#71717a">用你自己的身份登录，不再单独维护密码。</p>
+
+      <button type="button" style="width:100%;height:40px;border:none;border-radius:7px;background:#07c160;color:#ffffff;font-size:14px;font-weight:500;display:flex;align-items:center;justify-content:center;gap:8px">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/><path d="m9 12 2 2 4-4"/></svg>
+        使用 Pocket ID 登录
+      </button>
+
+      <div style="display:flex;align-items:center;gap:10px;margin:18px 0">
+        <span style="flex:1;height:1px;background:#e4e4e7"></span>
+        <span style="font-size:11px;color:#a1a1aa">为什么是这个</span>
+        <span style="flex:1;height:1px;background:#e4e4e7"></span>
+      </div>
+
+      <p style="margin:0;font-size:12px;color:#71717a;line-height:1.7">
+        认证交给 Pocket ID 统一处理，这边不保存任何密码。登录一次之后会话有效期内不用再登。
+      </p>
+
+      <div style="margin-top:16px;padding-top:14px;border-top:1px solid #f4f4f5;display:flex;align-items:center;gap:7px">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#a1a1aa" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+        <span style="font-size:11px;color:#a1a1aa">OpenID Connect · 由 Pocket ID 提供</span>
+      </div>
+    </div>
+
+    <div style="display:flex;align-items:center;justify-content:center;gap:16px;margin-top:18px;font-size:12px;color:#a1a1aa">
+      <a href="#" style="color:#71717a">返回文章列表</a>
+      <span style="width:1px;height:11px;background:#e4e4e7"></span>
+      <a href="#" style="color:#71717a">Pocket ID 是什么</a>
+    </div>
+
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1280,"height":760}}'>
+class Component extends DCLogic {
+  renderVals() { return {}; }
+}
+</script>
+</body>
+</html>

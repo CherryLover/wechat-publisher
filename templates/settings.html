@@ -1,0 +1,246 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>设置 · 发布台</title>
+<style>
+*{box-sizing:border-box}
+body{margin:0;background:#fafafa;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif;-webkit-font-smoothing:antialiased;color:#09090b}
+a{color:inherit;text-decoration:none}
+.top{background:#fff;border-bottom:1px solid #e4e4e7}
+.top-inner{max-width:1200px;margin:0 auto;padding:0 24px;height:56px;display:flex;align-items:center;gap:28px}
+.brand{display:flex;align-items:center;gap:9px}
+.mark{width:28px;height:28px;border-radius:7px;background:#07c160;display:flex;align-items:center;justify-content:center}
+.brand-name{font-size:14px;font-weight:600}
+nav{display:flex;align-items:center;gap:4px}
+nav a{display:inline-flex;align-items:center;gap:7px;height:32px;padding:0 11px;border-radius:7px;font-size:13px;font-weight:500;color:#71717a}
+nav a.active{background:#f4f4f5;color:#09090b}
+.top-right{margin-left:auto;display:flex;align-items:center;gap:10px}
+.user{display:flex;align-items:center;gap:8px;padding-left:10px;border-left:1px solid #e4e4e7;font-size:13px;color:#3f3f46}
+.avatar{width:26px;height:26px;border-radius:50%;background:#e4e4e7;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:600;color:#52525b;overflow:hidden}
+.avatar img{width:100%;height:100%;object-fit:cover}
+main{max-width:1200px;margin:0 auto;padding:26px 24px 40px}
+h1{margin:0;font-size:22px;font-weight:600;letter-spacing:-.2px}
+.sub{margin:5px 0 20px;font-size:13px;color:#71717a}
+.grid{display:grid;grid-template-columns:minmax(0,1fr) 392px;gap:20px;align-items:start}
+.card{background:#fff;border:1px solid #e4e4e7;border-radius:8px;box-shadow:0 1px 2px rgba(0,0,0,.05);margin-bottom:16px}
+.card-head{padding:18px 20px 14px;border-bottom:1px solid #f4f4f5}
+.card-head h2{margin:0;font-size:14px;font-weight:600;display:flex;align-items:center;gap:8px}
+.card-head p{margin:6px 0 0;font-size:13px;color:#71717a}
+.card-body{padding:16px 20px 18px}
+.card-foot{padding:12px 20px;border-top:1px solid #f4f4f5;display:flex;align-items:center;gap:10px}
+.themes{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.theme-opt input{position:absolute;opacity:0;width:0;height:0}
+.theme-opt span.box{display:flex;align-items:center;gap:9px;padding:9px 11px;border:1px solid #e4e4e7;border-radius:7px;font-size:13px;color:#3f3f46;cursor:pointer}
+.theme-opt input:checked + span.box{border-color:#07c160;background:#f0fdf5;color:#09090b}
+.theme-opt input:focus-visible + span.box{outline:2px solid #07c160;outline-offset:2px}
+.swatch{width:16px;height:16px;border-radius:4px;flex:none}
+label.lbl{display:block;font-size:13px;font-weight:500;margin-bottom:6px}
+input[type=text]{width:100%;height:36px;padding:0 11px;border:1px solid #e4e4e7;border-radius:6px;font-size:13px;color:#09090b;background:#fff;font-family:inherit}
+input[type=text]:focus{outline:none;border-color:#07c160}
+.hint{margin:6px 0 0;font-size:12px;color:#a1a1aa}
+.field{margin-bottom:12px}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.switch{position:relative;display:inline-flex;align-items:center;gap:8px;cursor:pointer}
+.switch input{position:absolute;opacity:0;width:0;height:0}
+.switch .track{width:36px;height:20px;border-radius:999px;background:#e4e4e7;position:relative;transition:background .15s}
+.switch .thumb{position:absolute;top:2px;left:2px;width:16px;height:16px;border-radius:50%;background:#fff;box-shadow:0 1px 2px rgba(0,0,0,.2);transition:transform .15s}
+.switch input:checked + .track{background:#07c160}
+.switch input:checked + .track .thumb{transform:translateX(16px)}
+.checks{display:flex;gap:18px;flex-wrap:wrap;align-items:center}
+.check{display:flex;align-items:center;gap:7px;font-size:13px;color:#3f3f46;cursor:pointer}
+.check input{width:16px;height:16px;accent-color:#07c160;margin:0}
+.btn{display:inline-flex;align-items:center;gap:6px;height:34px;padding:0 13px;border:1px solid #e4e4e7;border-radius:6px;background:#fff;font-size:13px;font-weight:500;color:#09090b;font-family:inherit;cursor:pointer}
+.btn:hover{background:#f4f4f5}
+.btn-primary{background:#07c160;border:none;color:#fff}
+.btn-primary:hover{background:#06a852}
+.save-row{display:flex;align-items:center;gap:12px}
+.save-row .note{font-size:12px;color:#71717a}
+.save-row .path{margin-left:auto;font-size:12px;color:#a1a1aa}
+.preview-head{padding:12px 14px;border-bottom:1px solid #f4f4f5;display:flex;align-items:center;gap:8px}
+.badge{display:inline-flex;align-items:center;border:1px solid #d5f2e3;background:#f0fdf5;color:#0b7a44;font-size:11px;font-weight:500;padding:1px 7px;border-radius:999px}
+.preview-body{padding:12px 14px;background:#fafafa}
+.preview-body iframe{width:100%;height:470px;border:1px solid #e4e4e7;border-radius:10px;background:#fff}
+.preview-foot{padding:0 14px 12px;font-size:11px;color:#a1a1aa;line-height:1.6}
+.notice{background:#f0fdf5;border:1px solid #d5f2e3;color:#0b7a44;font-size:13px;padding:10px 14px;border-radius:7px;margin-bottom:16px}
+.warn{background:#fffbeb;border:1px solid #fde68a;color:#92400e}
+@media (max-width:1000px){.grid{grid-template-columns:1fr}.themes{grid-template-columns:repeat(2,1fr)}}
+</style>
+</head>
+<body>
+
+<div class="top">
+  <div class="top-inner">
+    <div class="brand">
+      <span class="mark">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m22 2-7 20-4-9-9-4Z"/><path d="M22 2 11 13"/></svg>
+      </span>
+      <span class="brand-name">程序杂念 · 发布台</span>
+    </div>
+    <nav>
+      <a href="/">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+        文章
+      </a>
+      <a class="active" href="/settings">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+        设置
+      </a>
+    </nav>
+    <div class="top-right">
+      <div class="user">
+        <span class="avatar">{% if user.picture %}<img src="{{ user.picture }}" alt="">{% else %}{{ (user.name or '?')[:1] }}{% endif %}</span>
+        <span>{{ user.name }}</span>
+        <a href="/logout" aria-label="退出登录" style="display:inline-flex;color:#a1a1aa">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+        </a>
+      </div>
+    </div>
+  </div>
+</div>
+
+<main>
+  <h1>设置</h1>
+  <p class="sub">主题、通知与登录方式</p>
+
+  {% if saved %}<div class="notice">配置已保存，立即生效。</div>{% endif %}
+
+  <form method="post" action="/settings">
+    <div class="grid">
+
+      <div>
+        <section class="card">
+          <div class="card-head">
+            <h2>
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#71717a" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="13.5" cy="6.5" r=".5"/><circle cx="17.5" cy="10.5" r=".5"/><circle cx="8.5" cy="7.5" r=".5"/><circle cx="6.5" cy="12.5" r=".5"/><path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.926 0 1.648-.746 1.648-1.688 0-.437-.18-.835-.437-1.125-.29-.289-.438-.652-.438-1.125a1.64 1.64 0 0 1 1.668-1.668h1.996c3.051 0 5.555-2.503 5.555-5.554C21.965 6.012 17.461 2 12 2z"/></svg>
+              发布主题
+            </h2>
+            <p>推送草稿时套用的公众号排版样式，改完下次发布才生效。</p>
+          </div>
+          <div class="card-body">
+            <div class="themes">
+              {% for t in themes %}
+              <label class="theme-opt">
+                <input type="radio" name="theme" value="{{ t.id }}" {% if t.id == current_theme %}checked{% endif %} data-theme="{{ t.id }}">
+                <span class="box">
+                  <span class="swatch" style="background:{{ t.color or '#e4e4e7' }}"></span>{{ t.name }}
+                </span>
+              </label>
+              {% endfor %}
+            </div>
+          </div>
+        </section>
+
+        <section class="card">
+          <div class="card-head" style="display:flex;align-items:center;gap:8px">
+            <h2 style="margin:0">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#71717a" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg>
+              通知
+            </h2>
+            <label class="switch" style="margin-left:auto">
+              <span style="font-size:12px;color:#71717a">启用</span>
+              <input type="checkbox" name="notify_enabled" {% if cfg.notify.enabled %}checked{% endif %}>
+              <span class="track"><span class="thumb"></span></span>
+            </label>
+          </div>
+          <div class="card-body">
+            <p class="hint" style="margin:0 0 14px">用 Bark 把进度推到 iPhone，成了败了都会响。</p>
+
+            <div class="field">
+              <label class="lbl" for="bark_key">设备 Key</label>
+              <input id="bark_key" type="text" name="bark_key" value="{{ cfg.notify.bark.key }}" placeholder="在 Bark App 首页复制">
+              <p class="hint">Bark App 首页那一串，不含 https://api.day.app/</p>
+            </div>
+
+            <div class="two">
+              <div class="field">
+                <label class="lbl" for="bark_server">服务器</label>
+                <input id="bark_server" type="text" name="bark_server" value="{{ cfg.notify.bark.server }}">
+              </div>
+              <div class="field">
+                <label class="lbl" for="bark_group">分组</label>
+                <input id="bark_group" type="text" name="bark_group" value="{{ cfg.notify.bark.group }}">
+              </div>
+            </div>
+
+            <div class="checks" style="margin-top:4px">
+              <label class="check"><input type="checkbox" name="ev_start" {% if cfg.notify.events.start %}checked{% endif %}>开始处理</label>
+              <label class="check"><input type="checkbox" name="ev_success" {% if cfg.notify.events.success %}checked{% endif %}>发布成功</label>
+              <label class="check"><input type="checkbox" name="ev_error" {% if cfg.notify.events.error %}checked{% endif %}>发布失败</label>
+            </div>
+          </div>
+          <div class="card-foot">
+            <button type="button" class="btn" id="test-btn">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m22 2-7 20-4-9-9-4Z"/><path d="M22 2 11 13"/></svg>
+              发送测试通知
+            </button>
+            <span class="hint" id="test-msg" style="margin:0">确认 Key 没填错（先保存再测）</span>
+          </div>
+        </section>
+
+        <div class="save-row">
+          <button type="submit" class="btn btn-primary" style="height:36px;padding:0 18px">保存配置</button>
+          <span class="note">保存后立即生效</span>
+          <span class="path">写入 data/config.json</span>
+        </div>
+      </div>
+
+      <aside class="card" style="margin:0">
+        <div class="preview-head">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#71717a" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg>
+          <span style="font-size:13px;font-weight:600">预览</span>
+          <span class="badge" id="preview-theme">{{ current_theme }}</span>
+        </div>
+        <div class="preview-body">
+          {% if sample %}
+          <iframe id="preview-frame" src="/preview/{{ sample.id }}?token={{ token }}&theme={{ current_theme }}" title="文章预览"></iframe>
+          {% else %}
+          <div style="height:470px;display:flex;align-items:center;justify-content:center;font-size:13px;color:#a1a1aa">还没有文章可预览</div>
+          {% endif %}
+        </div>
+        <div class="preview-foot">点上面的主题，这里会换成对应排版。用的是列表里最新一篇。</div>
+      </aside>
+
+    </div>
+  </form>
+</main>
+
+<script>
+(function () {
+  var frame = document.getElementById('preview-frame');
+  var badge = document.getElementById('preview-theme');
+  var radios = document.querySelectorAll('input[name="theme"]');
+  {% if sample %}
+  var base = "/preview/{{ sample.id }}?token={{ token }}&theme=";
+  {% else %}
+  var base = null;
+  {% endif %}
+
+  radios.forEach(function (r) {
+    r.addEventListener('change', function () {
+      var id = r.value;
+      badge.textContent = id;
+      if (frame && base) frame.src = base + encodeURIComponent(id);
+    });
+  });
+
+  var btn = document.getElementById('test-btn');
+  var msg = document.getElementById('test-msg');
+  if (btn) {
+    btn.addEventListener('click', async function () {
+      msg.textContent = '发送中…';
+      try {
+        var resp = await fetch('/settings/test-notify', { method: 'POST' });
+        var data = await resp.json();
+        if (data.ok) msg.textContent = '已发送，看看手机';
+        else msg.textContent = '没发出去：' + (data.reason || data.status || '未知原因');
+      } catch (e) {
+        msg.textContent = '请求失败：' + e.message;
+      }
+    });
+  }
+})();
+</script>
+</body>
+</html>

@@ -38,12 +38,32 @@ def load_themes():
         _theme_cache[theme_id] = css_file.read_text(encoding="utf-8")
 
 
+THEME_COLORS = {
+    "default": "#ff502c",
+    "juejin_default": "#1e80ff",
+    "lapis": "#4870ac",
+    "maize": "#e49123",
+    "medium_default": "#191b1f",
+    "orangeheart": "#e9694a",
+    "phycat": "#3db8bf",
+    "pie": "#f27f79",
+    "purple": "#8064a9",
+    "rainbow": "linear-gradient(90deg,#ff5f6d,#ffc371,#47cf73,#4aa8ff,#a06bff)",
+    "toutiao_default": "#0069c2",
+    "zhihu_default": "#535861",
+}
+
+
 def list_themes() -> list[dict]:
-    """返回可用主题列表"""
+    """返回可用主题列表（含代表色，给设置页用）"""
     if not _theme_cache:
         load_themes()
     return [
-        {"id": tid, "name": THEME_NAMES.get(tid, tid)}
+        {
+            "id": tid,
+            "name": THEME_NAMES.get(tid, tid),
+            "color": THEME_COLORS.get(tid, "#e4e4e7"),
+        }
         for tid in sorted(_theme_cache.keys())
     ]
 
