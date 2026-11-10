@@ -2,6 +2,7 @@
 文章存储（SQLite）
 """
 
+import os
 import sqlite3
 import uuid
 from datetime import datetime
@@ -9,7 +10,7 @@ from pathlib import Path
 from typing import Optional
 from dataclasses import dataclass
 
-DB_PATH = Path("/app/data/articles.db")
+DB_PATH = Path(os.getenv("DATA_DIR", "/app/data")) / "articles.db"
 
 
 @dataclass

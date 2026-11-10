@@ -35,9 +35,10 @@ from .auth import (
 )
 from .imagen import ImagenAPI
 from .mcp_server import mcp
+from .notion_webhook import router as notion_router
 
 # 图片存储目录
-UPLOAD_DIR = Path("/app/uploads")
+UPLOAD_DIR = Path(os.getenv("UPLOAD_DIR", "/app/uploads"))
 
 load_dotenv()
 
@@ -92,6 +93,9 @@ app = FastAPI(
     title="微信公众号发布服务",
     lifespan=lifespan
 )
+
+# Notion Webhook（状态改成「发布」自动推草稿箱）
+app.include_router(notion_router)
 
 
 # ========== MCP 鉴权中间件 ==========
