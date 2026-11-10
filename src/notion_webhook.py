@@ -12,6 +12,7 @@ import json
 import logging
 import os
 from collections import OrderedDict
+from pathlib import Path
 from typing import Optional
 
 from fastapi import APIRouter, HTTPException, Request
@@ -23,6 +24,9 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
+# Notion 创建 Webhook 时会把 verification_token 发过来，落盘后用它验签
+SECRET_FILE = Path(os.getenv("DATA_DIR", "/app/data")) / "notion_webhook_secret.txt"
+
 # 已处理事件 id（防 Notion 重试导致重复发布）
 _seen_events: "OrderedDict[str, bool]" = OrderedDict()
 _SEEN_MAX = 500
@@ -30,6 +34,29 @@ _SEEN_MAX = 500
 # 正在发布的页面，避免并发重复
 _inflight: set[str] = set()
 _locks: dict[str, asyncio.Lock] = {}
+
+
+def _get_secret() -> str:
+    """优先读环境变量，其次读首次验证时落盘的 token"""
+    env_secret = os.getenv("NOTION_WEBHOOK_SECRET", "").strip()
+    if env_secret:
+        return env_secret
+    try:
+        if SECRET_FILE.exists():
+            return SECRET_FILE.read_text(encoding="utf-8").strip()
+    except Exception as e:
+        logger.warning("读取 webhook 密钥文件失败: %s", e)
+    return ""
+
+
+def _save_secret(token: str) -> None:
+    try:
+        SECRET_FILE.parent.mkdir(parents=True, exist_ok=True)
+        SECRET_FILE.write_text(token, encoding="utf-8")
+        SECRET_FILE.chmod(0o600)
+        logger.info("已保存 Notion 验证 token，后续请求将自动验签")
+    except Exception as e:
+        logger.error("保存验证 token 失败: %s", e)
 
 
 def verify_signature(raw_body: bytes, signature: str, secret: str) -> bool:
@@ -89,7 +116,7 @@ async def _handle_page_event(page_id: str) -> None:
 async def notion_webhook(request: Request):
     """接收 Notion 事件"""
     raw = await request.body()
-    secret = os.getenv("NOTION_WEBHOOK_SECRET", "")
+    secret = _get_secret()
     signature = request.headers.get("X-Notion-Signature", "")
 
     if secret:
@@ -107,8 +134,9 @@ async def notion_webhook(request: Request):
     # 首次配置校验：Notion 会发带 verification_token 的请求
     token = payload.get("verification_token")
     if token:
-        logger.info("收到 Notion 验证 token，请填入 NOTION_WEBHOOK_SECRET")
-        return {"ok": True, "verification_token_hint": "configure NOTION_WEBHOOK_SECRET"}
+        _save_secret(token)
+        logger.info("收到 Notion 验证 token，已保存，后续自动验签")
+        return {"ok": True, "verified": True}
 
     event_id = payload.get("id") or f"{payload.get('type')}:{payload.get('timestamp')}"
     event_type = payload.get("type", "")
@@ -142,7 +170,8 @@ async def webhook_status():
     source = _get_source()
     return {
         "notion_token": bool(os.getenv("NOTION_TOKEN")),
-        "webhook_secret_configured": bool(os.getenv("NOTION_WEBHOOK_SECRET")),
+        "webhook_secret_configured": bool(_get_secret()),
+        "webhook_secret_from_file": (not os.getenv("NOTION_WEBHOOK_SECRET", "").strip()) and SECRET_FILE.exists(),
         "wechat_configured": _get_wechat() is not None,
         "trigger_status": TRIGGER_STATUS,
         "inflight": list(_inflight),
