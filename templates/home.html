@@ -42,6 +42,10 @@ h1{margin:0;font-size:22px;font-weight:600;letter-spacing:-.2px}
 .badge.muted{border-color:#e4e4e7;background:#fafafa;color:#52525b}
 .icon-btn{width:28px;height:28px;border:none;border-radius:6px;background:transparent;display:inline-flex;align-items:center;justify-content:center;color:#71717a;cursor:pointer}
 .icon-btn:hover{background:#f4f4f5;color:#09090b}
+.row-link{text-decoration:none;color:inherit;transition:background .12s}
+.row-link:hover{background:#fafafa}
+.row-link:hover .t{color:#07c160}
+.row-link:focus-visible{outline:2px solid #07c160;outline-offset:-2px}
 .foot{padding:11px 16px;background:#fafafa;font-size:12px;color:#71717a}
 .empty{padding:48px 16px;text-align:center;color:#a1a1aa;font-size:13px}
 @media (max-width:820px){
@@ -114,17 +118,17 @@ h1{margin:0;font-size:22px;font-weight:600;letter-spacing:-.2px}
     </div>
 
     {% for r in rows %}
-    <div class="row">
-      <div class="t" title="{{ r.title }}">{{ r.title }}</div>
+    <a class="row row-link" href="{{ r.preview_url }}" target="_blank" rel="noopener" title="点击查看预览">
+      <div class="t">{{ r.title }}</div>
       <div class="m">{{ r.published_at }}</div>
       <div class="m theme-col">{{ r.theme }}</div>
       <div><span class="badge {{ '' if r.status.tone == 'ok' else 'muted' }}">{{ r.status.label }}</span></div>
       <div style="text-align:right">
-        <a class="icon-btn" href="{{ r.preview_url }}" target="_blank" rel="noopener" aria-label="预览" title="预览">
+        <span class="icon-btn" aria-hidden="true">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg>
-        </a>
+        </span>
       </div>
-    </div>
+    </a>
     {% endfor %}
 
     {% if not rows %}

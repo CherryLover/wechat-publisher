@@ -61,7 +61,7 @@ input[type=text]:focus{outline:none;border-color:#07c160}
 .preview-head{padding:12px 14px;border-bottom:1px solid #f4f4f5;display:flex;align-items:center;gap:8px}
 .badge{display:inline-flex;align-items:center;border:1px solid #d5f2e3;background:#f0fdf5;color:#0b7a44;font-size:11px;font-weight:500;padding:1px 7px;border-radius:999px}
 .preview-body{padding:12px 14px;background:#fafafa}
-.preview-body iframe{width:100%;height:470px;border:1px solid #e4e4e7;border-radius:10px;background:#fff}
+.preview-body iframe{width:100%;min-height:1200px;border:1px solid #e4e4e7;border-radius:10px;background:#fff;display:block}
 .preview-foot{padding:0 14px 12px;font-size:11px;color:#a1a1aa;line-height:1.6}
 .notice{background:#f0fdf5;border:1px solid #d5f2e3;color:#0b7a44;font-size:13px;padding:10px 14px;border-radius:7px;margin-bottom:16px}
 .warn{background:#fffbeb;border:1px solid #fde68a;color:#92400e}
@@ -216,6 +216,18 @@ input[type=text]:focus{outline:none;border-color:#07c160}
   {% else %}
   var base = null;
   {% endif %}
+
+  function fitFrame() {
+    if (!frame) return;
+    try {
+      var h = frame.contentDocument.documentElement.scrollHeight;
+      if (h && h > 400) frame.style.height = (h + 24) + 'px';
+    } catch (e) { /* 跨域时忽略 */ }
+  }
+  if (frame) {
+    frame.addEventListener('load', fitFrame);
+    setTimeout(fitFrame, 600);
+  }
 
   radios.forEach(function (r) {
     r.addEventListener('change', function () {
