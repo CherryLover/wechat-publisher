@@ -138,29 +138,47 @@ async def notion_webhook(request: Request):
         logger.info("收到 Notion 验证 token，已保存，后续自动验签")
         return {"ok": True, "verified": True}
 
-    event_id = payload.get("id") or f"{payload.get('type')}:{payload.get('timestamp')}"
-    event_type = payload.get("type", "")
-    entity = payload.get("entity") or {}
-    entity_id = entity.get("id")
+    logger.debug("Webhook 原始报文: %s", raw[:600].decode("utf-8", "ignore"))
 
-    logger.info("收到 Webhook: %s entity=%s", event_type, (entity_id or "")[:8])
+    source_info = payload.get("source") or {}
+    data = payload.get("data") or {}
+    entity = payload.get("entity") or {}
+
+    # 两种来源都支持：
+    # 1) Notion 数据库自动化（Automation）：页面对象直接塞在 data 里
+    # 2) 集成 Webhook 订阅：页面 id 在 entity 里
+    page_id, properties = None, None
+    if isinstance(data, dict) and data.get("object") == "page":
+        page_id, properties = data.get("id"), data.get("properties")
+    elif entity.get("type") == "page":
+        page_id = entity.get("id")
+
+    event_id = (
+        payload.get("id")
+        or source_info.get("event_id")
+        or f"{payload.get('type')}:{payload.get('timestamp')}"
+    )
+
+    logger.info(
+        "收到事件 source=%s page=%s",
+        source_info.get("type") or payload.get("type", "?"),
+        (page_id or "")[:8],
+    )
 
     if not _remember(event_id):
         return {"ok": True, "skipped": "duplicate"}
 
-    if entity.get("type") != "page" or event_type not in (
-        "page.properties_updated",
-        "page.created",
-        "page.content_updated",
-        "page.updated",
-    ):
-        return {"ok": True, "skipped": "irrelevant"}
+    if not page_id:
+        return {"ok": True, "skipped": "no page id"}
 
-    if not entity_id:
-        return {"ok": True, "skipped": "no entity id"}
+    # 报文里带了属性就先用它判断，省一次 API 调用
+    if properties:
+        st = (properties.get("状态") or {}).get("select") or {}
+        if st.get("name") != TRIGGER_STATUS:
+            return {"ok": True, "skipped": "status=%s" % st.get("name")}
 
     # 尽快返回 200，发布放后台
-    asyncio.create_task(_handle_page_event(entity_id))
+    asyncio.create_task(_handle_page_event(page_id))
     return {"ok": True, "accepted": True}
 
 
