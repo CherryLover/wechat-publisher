@@ -153,8 +153,9 @@ def blocks_to_markdown(blocks: list[dict], depth: int = 0) -> str:
     lines: list[str] = []
     indent = "  " * depth
 
-    for b in blocks:
+    for idx, b in enumerate(blocks):
         kind = b.get("type")
+        nxt = blocks[idx + 1].get("type") if idx + 1 < len(blocks) else None
         if kind in SKIP_BLOCK_TYPES:
             continue
         data = b.get(kind) or {}
@@ -176,15 +177,21 @@ def blocks_to_markdown(blocks: list[dict], depth: int = 0) -> str:
             lines.append(indent + "- " + _rich(data.get("rich_text")))
             if b.get("_children"):
                 lines.append(blocks_to_markdown(b["_children"], depth + 1))
+            if nxt != "bulleted_list_item":
+                lines.append("")
 
         elif kind == "numbered_list_item":
             lines.append(indent + "1. " + _rich(data.get("rich_text")))
             if b.get("_children"):
                 lines.append(blocks_to_markdown(b["_children"], depth + 1))
+            if nxt != "numbered_list_item":
+                lines.append("")
 
         elif kind == "to_do":
             mark = "x" if data.get("checked") else " "
             lines.append(indent + f"- [{mark}] " + _rich(data.get("rich_text")))
+            if nxt != "to_do":
+                lines.append("")
 
         elif kind == "quote":
             text = _rich(data.get("rich_text"))
@@ -213,6 +220,8 @@ def blocks_to_markdown(blocks: list[dict], depth: int = 0) -> str:
         elif kind == "table_row":
             cells = data.get("cells") or []
             lines.append("| " + " | ".join(_rich(c) for c in cells) + " |")
+            if nxt != "table_row":
+                lines.append("")
 
         elif kind == "toggle":
             text = _rich(data.get("rich_text"))
