@@ -14,6 +14,7 @@ AI 配图：文章 → 4 张图（1 封面 + 3 插图）
 每次调用都用 usage.record() 记 token/耗时，供设置页的用量面板统计。
 """
 
+import asyncio
 import base64
 import hashlib
 import io
@@ -68,6 +69,20 @@ MAX_BODY_CHARS = 6000
 
 # auto 模式下，一旦发现 images/generations 不可用，本次进程内就不再重试
 _IMAGES_ENDPOINT_BROKEN = False
+
+# 聚合网关常见 5xx / 524（Cloudflare 上游超时），值得重试一次
+_RETRYABLE_STATUS = {408, 425, 429, 500, 502, 503, 504, 520, 521, 522, 523, 524}
+IMAGE_ATTEMPTS = 2
+RETRY_DELAY = 3.0
+
+
+def _retryable(exc: Exception) -> bool:
+    if isinstance(exc, (httpx.TimeoutException, httpx.TransportError)):
+        return True
+    if isinstance(exc, httpx.HTTPStatusError):
+        code = exc.response.status_code
+        return code in _RETRYABLE_STATUS or code >= 500
+    return False
 
 
 class AIError(Exception):
@@ -186,40 +201,55 @@ async def plan_prompts(cfg: dict, title: str, md: str,
 async def generate_image(cfg: dict, prompt: str, size: str, *,
                          step: str, article_ref: Optional[str] = None,
                          article_title: Optional[str] = None) -> bytes:
-    """第②步：一条提示词 → 一张图（原始字节）"""
+    """第②步：一条提示词 → 一张图（原始字节）。5xx/超时自动重试一次。"""
     api = (cfg.get("image_api") or "auto").lower()
     model = cfg.get("image_model")
     t0 = time.time()
+    last_err: Optional[Exception] = None
+
+    for attempt in range(1, IMAGE_ATTEMPTS + 1):
+        try:
+            async with httpx.AsyncClient(timeout=httpx.Timeout(300.0, connect=20.0),
+                                         follow_redirects=True) as cli:
+                raw, u = await _dispatch(cli, cfg, model, prompt, size, api)
+            p, c, t = _tokens_from(u)
+            usage.record(step=step, model=model, prompt_tokens=p, completion_tokens=c,
+                         total_tokens=t, images=1,
+                         duration_ms=int((time.time() - t0) * 1000),
+                         article_ref=article_ref, article_title=article_title)
+            return raw
+        except Exception as e:
+            last_err = e
+            first_line = str(e).splitlines()[0] if str(e) else type(e).__name__
+            if attempt < IMAGE_ATTEMPTS and _retryable(e):
+                logger.warning("%s 第 %d 次失败（%s），%.0fs 后重试",
+                               step, attempt, first_line[:100], RETRY_DELAY)
+                await asyncio.sleep(RETRY_DELAY)
+                continue
+            usage.record(step=step, model=model, ok=False, error=str(e),
+                         duration_ms=int((time.time() - t0) * 1000),
+                         article_ref=article_ref, article_title=article_title)
+            raise
+
+    raise last_err or AIError("生图失败")
+
+
+async def _dispatch(cli, cfg, model, prompt, size, api) -> tuple[bytes, dict]:
+    if api == "responses":
+        return await _via_responses(cli, cfg, model, prompt, size)
+    if api == "images":
+        return await _via_images(cli, cfg, model, prompt, size)
+
+    global _IMAGES_ENDPOINT_BROKEN
+    if _IMAGES_ENDPOINT_BROKEN:
+        return await _via_responses(cli, cfg, model, prompt, size)
     try:
-        async with httpx.AsyncClient(timeout=httpx.Timeout(300.0, connect=20.0),
-                                     follow_redirects=True) as cli:
-            if api == "responses":
-                raw, u = await _via_responses(cli, cfg, model, prompt, size)
-            elif api == "images":
-                raw, u = await _via_images(cli, cfg, model, prompt, size)
-            else:
-                global _IMAGES_ENDPOINT_BROKEN
-                if _IMAGES_ENDPOINT_BROKEN:
-                    raw, u = await _via_responses(cli, cfg, model, prompt, size)
-                else:
-                    try:
-                        raw, u = await _via_images(cli, cfg, model, prompt, size)
-                    except Exception as e1:
-                        _IMAGES_ENDPOINT_BROKEN = True
-                        first_line = str(e1).splitlines()[0] if str(e1) else ""
-                        logger.warning("images 接口不可用，本次进程改用 responses 工具：%s", first_line)
-                        raw, u = await _via_responses(cli, cfg, model, prompt, size)
-        p, c, t = _tokens_from(u)
-        usage.record(step=step, model=model, prompt_tokens=p, completion_tokens=c,
-                     total_tokens=t, images=1,
-                     duration_ms=int((time.time() - t0) * 1000),
-                     article_ref=article_ref, article_title=article_title)
-        return raw
-    except Exception as e:
-        usage.record(step=step, model=model, ok=False, error=str(e),
-                     duration_ms=int((time.time() - t0) * 1000),
-                     article_ref=article_ref, article_title=article_title)
-        raise
+        return await _via_images(cli, cfg, model, prompt, size)
+    except Exception as e1:
+        _IMAGES_ENDPOINT_BROKEN = True
+        first_line = str(e1).splitlines()[0] if str(e1) else ""
+        logger.warning("images 接口不可用，本次进程改用 responses 工具：%s", first_line[:100])
+        return await _via_responses(cli, cfg, model, prompt, size)
 
 
 async def _via_images(cli, cfg, model, prompt, size) -> tuple[bytes, dict]:
