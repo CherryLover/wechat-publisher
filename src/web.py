@@ -14,7 +14,7 @@ from fastapi import APIRouter, Request
 from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 
-from . import article, config, imagegen, notify, oidc, usage
+from . import article, config, imagegen, imagestyles, notify, oidc, usage
 from .auth import create_preview_token
 from .html_convert import list_themes
 
@@ -168,6 +168,7 @@ async def settings_page(request: Request, saved: Optional[str] = None):
         "user": user,
         "cfg": cfg,
         "themes": themes,
+        "styles": imagestyles.STYLES,
         "current_theme": current_theme,
         "saved": bool(saved),
         "sample": sample,
@@ -218,6 +219,8 @@ async def save_settings(request: Request):
         "text_model": (form.get("ai_text_model") or "").strip(),
         "image_model": (form.get("ai_image_model") or "").strip(),
         "image_api": (form.get("ai_image_api") or "auto").strip() or "auto",
+        "style_mode": (form.get("ai_style_mode") or "auto").strip() or "auto",
+        "style_allow": [x for x in form.getlist("ai_style_allow") if x],
         "style": (form.get("ai_style") or "").strip(),
         "write_to_notion": form.get("ai_write_notion") == "on",
         "max_width": max_width,
@@ -269,5 +272,6 @@ async def usage_page(request: Request):
         "steps": usage.by_step(),
         "articles": usage.by_article(30),
         "recent": usage.recent(50),
+        "styles_used": imagestyles.recent_log(12),
         "ai_on": bool(((config.load_config().get("ai_images") or {}).get("enabled"))),
     })

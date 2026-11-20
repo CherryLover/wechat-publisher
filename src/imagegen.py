@@ -28,7 +28,8 @@ from typing import Optional
 
 import httpx
 
-from . import config, usage
+from . import config, imagestyles, usage
+from .imagestyles import NO_TEXT
 
 logger = logging.getLogger(__name__)
 
@@ -54,8 +55,13 @@ PLAN_SYSTEM = """你是一位资深公众号视觉编辑，擅长给技术类文
    - after_paragraph：插在这个标题下面第几个自然段之后（1 表示第一段之后，通常 1 最自然）
 6. prompt 一律用英文写，要具体画得出来：主体、动作、构图、视角、光线、配色。
 
+6. 风格不是固定的：从给定的「风格候选」里挑一套最贴合这篇文章气质的，
+   整篇 4 张图都用这一套；如果给了「最近用过」的清单，尽量别再选它们。
+7. 把选中的风格 id 填到 style_id；每张图的 prompt 都要体现这套风格的配色与笔触。
+
 只输出 JSON：
 {
+  "style_id": "从风格候选里选的 id（若给的是固定风格，填 custom）",
   "style": "这套图的统一风格一句话（英文）",
   "cover": {"subject": "对应文章哪个主题（中文）", "prompt": "英文提示词", "alt": "中文图注 10-20 字"},
   "illustrations": [
@@ -95,6 +101,8 @@ class AIResult:
     plan: dict = field(default_factory=dict)
     cover_bytes: Optional[bytes] = None
     cover_url: Optional[str] = None
+    style_id: str = ""
+    style_name: str = ""
     items: list = field(default_factory=list)   # 成功的插图：[{kind,url,alt,heading,path}]
 
     @property
@@ -146,6 +154,55 @@ def _tokens_from(usage_obj: Optional[dict]) -> tuple[int, int, int]:
     return p, c, t
 
 
+def apply_style(prompt: str, style_en: str) -> str:
+    """把本篇风格钉在提示词末尾；已经包含就不重复追加"""
+    p = (prompt or "").strip()
+    if style_en and style_en.lower() not in p.lower():
+        p += f"\n\nVisual style: {style_en}. {NO_TEXT}."
+    return p
+
+
+def resolve_style(cand: str, cfg: dict, ref: str, pool: list,
+                  fixed_style: Optional[dict] = None) -> tuple[dict, bool]:
+    """决定本篇用哪套风格。返回 (风格, 是否走了兜底)"""
+    if fixed_style is not None:
+        return fixed_style, False
+
+    pool_ids = [x["id"] for x in (pool or [])]
+    recent = imagestyles.recent_ids(4)
+    chosen = imagestyles.get(cand) if cand in pool_ids else None
+    if chosen is None:
+        return imagestyles.pick(ref, allow=cfg.get("style_allow"), recent=recent), True
+    # 模型选了最近刚用过的风格，且池子里还有别的选择 → 换一个
+    if cand in recent and len(pool_ids) > len(recent):
+        return imagestyles.pick(ref, allow=cfg.get("style_allow"), recent=recent), True
+    return chosen, False
+
+
+
+def _style_brief(cfg: dict):
+    """根据设置生成「风格说明」段落，并给出兜底风格"""
+    mode = (cfg.get("style_mode") or "auto").lower()
+    allow = cfg.get("style_allow") or []
+
+    if mode == "fixed":
+        text = (cfg.get("style") or "").strip() or BASE_STYLE
+        brief = f"固定风格（4 张图都必须严格照这套画）：{text}"
+        return brief, {"id": "custom", "name": "自定义", "desc_en": text}, []
+
+    pool = imagestyles.allowed(allow)
+    recent = imagestyles.recent_ids(4)
+    catalog = imagestyles.prompt_catalog(pool)
+    recent_txt = ""
+    if recent:
+        names = [f"{i}（{(imagestyles.get(i) or {}).get('name', i)}）" for i in recent]
+        recent_txt = "\n最近几篇已经用过这些风格，请尽量避开：" + "、".join(names)
+    brief = (f"风格候选（style_id 必须从中选一个）：\n{catalog}{recent_txt}\n"
+             f"候选之外的风格不要选；画面里不要出现文字。")
+    return brief, None, pool
+
+
+
 async def plan_prompts(cfg: dict, title: str, md: str,
                        article_ref: Optional[str] = None,
                        article_title: Optional[str] = None) -> dict:
@@ -154,9 +211,9 @@ async def plan_prompts(cfg: dict, title: str, md: str,
     if len(body) > MAX_BODY_CHARS:
         body = body[:MAX_BODY_CHARS] + "\n\n（正文过长，已截断）"
 
-    style = (cfg.get("style") or "").strip()
-    head = f"指定风格：{style}\n基础画风约束：{BASE_STYLE}" if style else f"指定风格：{BASE_STYLE}"
-    user_msg = f"{head}\n\n文章标题：{title}\n\n正文：\n{body}\n\n请按约定输出 JSON。"
+    style_brief, fixed_style, pool = _style_brief(cfg)
+    user_msg = (f"{style_brief}\n\n基础画风约束：{BASE_STYLE}\n\n"
+                f"文章标题：{title}\n\n正文：\n{body}\n\n请按约定输出 JSON。")
 
     payload = {
         "model": cfg.get("text_model"),
@@ -184,6 +241,14 @@ async def plan_prompts(cfg: dict, title: str, md: str,
         plan = json.loads(clean)
         if not plan.get("cover") or not plan.get("illustrations"):
             raise AIError(f"模型返回结构不对：{str(plan)[:200]}")
+
+        # 风格校验：固定模式直接用；自动模式校验候选 + 避开最近用过
+        cand = (plan.get("style_id") or "").strip()
+        chosen, fallback = resolve_style(cand, cfg, article_ref or title, pool, fixed_style)
+        if fallback and fixed_style is None:
+            logger.info("风格未采用模型选择（%r），兜底为 %s", cand, chosen["id"])
+        plan["_style"] = chosen
+        plan["_style_en"] = chosen.get("desc_en") or BASE_STYLE
         p, c, t = _tokens_from(data.get("usage"))
         usage.record(step="plan", model=cfg.get("text_model"), prompt_tokens=p,
                      completion_tokens=c, total_tokens=t,
@@ -406,6 +471,24 @@ async def build(title: str, markdown: str, *, ref: str, upload_dir: Path,
     plan = await plan_prompts(cfg, title, markdown,
                               article_ref=ref, article_title=title)
 
+    # plan_prompts 正常会把 _style 放进来；被替换/老计划时这里补一次兜底
+    style = plan.get("_style")
+    if not style:
+        _, fixed_style, pool = _style_brief(cfg)
+        style, _ = resolve_style((plan.get("style_id") or "").strip(),
+                                 cfg, ref, pool, fixed_style)
+        plan["_style"] = style
+        plan["_style_en"] = style.get("desc_en") or BASE_STYLE
+    style_en = plan.get("_style_en") or BASE_STYLE
+    try:
+        imagestyles.log_use(ref, style.get("id") or "custom", title)
+    except Exception:
+        pass
+    logger.info("本篇配图风格：%s（%s）", style.get("name") or "自定义", style.get("id") or "custom")
+
+    def with_style(prompt: str) -> str:
+        return apply_style(prompt, style_en)
+
     cover_size = cfg.get("cover_size") or "1536x1024"
     ill_size = cfg.get("illustration_size") or "1536x1024"
     max_width = int(cfg.get("max_width") or 1200)
@@ -418,11 +501,13 @@ async def build(title: str, markdown: str, *, ref: str, upload_dir: Path,
         if cover_path.exists():
             logger.info("复用已有 AI 封面 %s", cover_path.name)
         else:
-            raw = await generate_image(cfg, plan["cover"]["prompt"], cover_size,
+            raw = await generate_image(cfg, with_style(plan["cover"]["prompt"]), cover_size,
                                        step="cover", article_ref=ref, article_title=title)
             normalize_jpeg(raw, cover_path, max_width=max_width)
         result.cover_bytes = cover_path.read_bytes()
         result.cover_url = f"{base}/images/{cover_path.name}"
+        result.style_id = style.get("id") or "custom"
+        result.style_name = style.get("name") or "自定义"
     except Exception as e:
         logger.warning("AI 封面生成失败：%s", e)
 
@@ -448,7 +533,7 @@ async def build(title: str, markdown: str, *, ref: str, upload_dir: Path,
             if path.exists():
                 logger.info("复用已有 AI 插图 %s", name)
             else:
-                raw = await generate_image(cfg, ill["prompt"], ill_size,
+                raw = await generate_image(cfg, with_style(ill["prompt"]), ill_size,
                                            step=f"illustration-{i}",
                                            article_ref=ref, article_title=title)
                 normalize_jpeg(raw, path, max_width=max_width)

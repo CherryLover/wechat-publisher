@@ -262,7 +262,10 @@ async def publish_page(
 
         await source.set_select(page_id, "状态", STATUS_PUBLISHED)
         await notify_event("success", "发布成功", f"「{title}」已进草稿箱，去后台点发表。")
-        return {"success": True, "message": f"已发布到草稿箱（{len(md)} 字）", "draft_media_id": media_id}
+        style_note = f"，配图风格：{ai.style_name}" if (ai and getattr(ai, "style_name", "")) else ""
+        return {"success": True,
+                "message": f"已发布到草稿箱（{len(md)} 字{style_note}）",
+                "draft_media_id": media_id}
 
     except Exception as e:
         import traceback

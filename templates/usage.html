@@ -181,6 +181,26 @@ tr:last-child td{border-bottom:none}
   </div>
 
   <div class="card">
+    <div class="card-head"><h2>最近用过的配图风格</h2><span class="n">自动模式会避开最近 4 套</span></div>
+    {% if styles_used %}
+    <table>
+      <thead><tr><th>时间</th><th>风格</th><th class="hide-sm">文章</th></tr></thead>
+      <tbody>
+      {% for s in styles_used %}
+        <tr>
+          <td class="dim">{{ s.at }}</td>
+          <td>{{ s.name }} <span class="mono dim">{{ s.style_id }}</span></td>
+          <td class="dim hide-sm">{{ s.title }}</td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+    <div class="empty">还没有配图记录</div>
+    {% endif %}
+  </div>
+
+  <div class="card">
     <div class="card-head"><h2>最近调用</h2><span class="n">最近 50 次</span></div>
     {% if recent %}
     <div class="scroll">
