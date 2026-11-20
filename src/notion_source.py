@@ -7,7 +7,10 @@ Notion 数据源
 
 import logging
 import os
+import re
 from typing import Any, Optional
+
+from .html_convert import merge_pipe_tables
 
 import httpx
 
@@ -183,6 +186,53 @@ def _image_url(block: dict) -> Optional[str]:
     return (img.get("file") or {}).get("url")
 
 
+def _cell_text(rich_text: list) -> str:
+    """表格单元格：保留粗体/代码/链接，转义竖线，换行转 <br>"""
+    text = _rich(rich_text)
+    text = text.replace("\r\n", "\n").replace("\r", "\n")
+    text = text.replace("\n", "<br>")
+    # GFM 表格里 | 会切分单元格，必须转义
+    text = text.replace("|", "\\|")
+    return text.strip()
+
+
+def table_to_markdown(block: dict, rows: list) -> list[str]:
+    """Notion table 块 → GFM Markdown 表格行。
+
+    - has_column_header=True 时首行当表头，否则造一个空表头（GFM 必须有）
+    - 列数以 table_width 为准，短行补空、长行截断，保证每行列数一致
+    """
+    meta = block.get("table") or {}
+    width = int(meta.get("table_width") or 0)
+    has_header = bool(meta.get("has_column_header"))
+
+    body: list[list[str]] = []
+    for row in rows or []:
+        cells = (row.get("table_row") or {}).get("cells") or []
+        body.append([_cell_text(c) for c in cells])
+
+    if not body:
+        return []
+
+    ncol = width or max(len(r) for r in body)
+    if ncol <= 0:
+        return []
+
+    def fit(r: list[str]) -> list[str]:
+        return (r + [""] * ncol)[:ncol]
+
+    body = [fit(r) for r in body]
+    header = body[0] if has_header else [""] * ncol
+    data = body[1:] if has_header else body
+
+    out = ["| " + " | ".join(header) + " |",
+           "| " + " | ".join(["---"] * ncol) + " |"]
+    for r in data:
+        out.append("| " + " | ".join(r) + " |")
+    out.append("")
+    return out
+
+
 def blocks_to_markdown(blocks: list[dict], depth: int = 0) -> str:
     """Notion 块数组 → Markdown"""
     lines: list[str] = []
@@ -252,11 +302,18 @@ def blocks_to_markdown(blocks: list[dict], depth: int = 0) -> str:
                 lines.append(f"![{caption}]({url})")
                 lines.append("")
 
+        elif kind == "table":
+            lines.extend(table_to_markdown(b, b.get("_children") or []))
+
         elif kind == "table_row":
+            # 孤立行（父 table 没取到子块时的兜底）：单行成表，至少不会退化成裸竖线
             cells = data.get("cells") or []
-            lines.append("| " + " | ".join(_rich(c) for c in cells) + " |")
-            if nxt != "table_row":
-                lines.append("")
+            cells = [_cell_text(c) for c in cells]
+            if cells:
+                lines.append("| " + " | ".join(cells) + " |")
+                if nxt != "table_row":
+                    lines.append("| " + " | ".join(["---"] * len(cells)) + " |")
+                    lines.append("")
 
         elif kind == "toggle":
             text = _rich(data.get("rich_text"))
@@ -278,6 +335,7 @@ async def page_to_markdown(source: NotionSource, page_id: str) -> tuple[str, str
     title = NotionSource.prop_text(page, "标题") or "(无标题)"
     blocks = await source.get_block_tree(page_id)
     md = blocks_to_markdown(blocks)
+    md = merge_pipe_tables(md)
     return title, _tidy(md)
 
 

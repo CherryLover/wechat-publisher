@@ -202,8 +202,205 @@ def _extract_pseudo_rules(css: str) -> str:
     return '\n'.join(pseudo_rules)
 
 
+_TABLE_SEP_RE = re.compile(r"^\|?\s*:?-{2,}:?\s*(\|\s*:?-{2,}:?\s*)*\|?$")
+
+
+def _looks_like_table_row(line: str) -> bool:
+    s = (line or "").strip()
+    return s.startswith("|") and s.endswith("|") and s.count("|") >= 2
+
+
+_CELL_SPLIT_RE = re.compile(r"(?<!\\)\|")     # 不切分转义过的 \|
+
+
+def _pipe_count(line: str) -> int:
+    body = (line or "").strip()
+    body = body[1:] if body.startswith("|") else body
+    body = body[:-1] if body.endswith("|") else body
+    return len(_CELL_SPLIT_RE.split(body))
+
+
+def merge_pipe_tables(md: str) -> str:
+    """把被空行拆散的「裸竖线表格」重新拼成合法 GFM 表格。
+
+    Notion 里直接粘贴的 markdown 表格会被拆成一堆 paragraph 块，
+    每行之间被插入空行，导致 python-markdown 认不出表格。这里：
+    - 连续（允许夹空行）的 | ... | 行合到一组
+    - 缺分隔行就补一行 ---
+    - 列数不齐的行补齐/截断到表头列数
+    - 代码块里的内容一律不碰
+    """
+    lines = md.split("\n")
+    out: list[str] = []
+    i, in_code, changed = 0, False, False
+
+    while i < len(lines):
+        line = lines[i]
+        if line.strip().startswith("```"):
+            in_code = not in_code
+            out.append(line)
+            i += 1
+            continue
+        if in_code or not _looks_like_table_row(line):
+            out.append(line)
+            i += 1
+            continue
+
+        group: list[str] = []
+        j = i
+        while j < len(lines):
+            if _looks_like_table_row(lines[j]):
+                group.append(lines[j])
+                j += 1
+                continue
+            if lines[j].strip() == "":
+                k = j
+                while k < len(lines) and lines[k].strip() == "":
+                    k += 1
+                if k < len(lines) and _looks_like_table_row(lines[k]):
+                    j = k
+                    continue
+            break
+
+        if len(group) < 2:
+            out.extend(group)
+            out.append("")
+            i = j
+            continue
+
+        ncol = max(_pipe_count(g) for g in group)
+        has_sep = _TABLE_SEP_RE.match(group[1].strip()) is not None
+
+        def fit(raw: str) -> str:
+            body = raw.strip()
+            if body.startswith("|"):
+                body = body[1:]
+            if body.endswith("|"):
+                body = body[:-1]
+            cells = [c.strip() for c in _CELL_SPLIT_RE.split(body)]
+            cells = (cells + [""] * ncol)[:ncol]
+            return "| " + " | ".join(cells) + " |"
+
+        sep = "| " + " | ".join(["---"] * ncol) + " |"
+        if has_sep:
+            # 已经是合法表格：保留原分隔行（含 :---: 对齐标记）
+            fixed = [fit(group[0]), group[1].strip()]
+            rest = group[2:]
+        else:
+            # 没有分隔行 → 把首行当表头（粘贴来的表格基本都带表头）
+            fixed = [fit(group[0]), sep]
+            rest = group[1:]
+
+        for g in rest:
+            if _TABLE_SEP_RE.match(g.strip()):
+                continue
+            fixed.append(fit(g))
+
+        out.extend(fixed)
+        out.append("")
+        changed = True
+        i = j
+
+    if not changed:
+        return md
+    return re.sub(r"\n{3,}", "\n\n", "\n".join(out)).rstrip("\n") + "\n"
+
+
+# ---------- 表格：微信友好的内联样式 ----------
+
+_TABLE_TAG_RE = re.compile(r"<table\b[^>]*>.*?</table>", re.S | re.I)
+
+
+def _hex_to_rgba(hex_color: str, alpha: float) -> str:
+    h = (hex_color or "").lstrip("#")
+    if len(h) == 3:
+        h = "".join(c * 2 for c in h)
+    if len(h) != 6:
+        return f"rgba(0,0,0,{alpha})"
+    try:
+        r, g, b = int(h[0:2], 16), int(h[2:4], 16), int(h[4:6], 16)
+    except ValueError:
+        return f"rgba(0,0,0,{alpha})"
+    return f"rgba({r},{g},{b},{alpha})"
+
+
+def _add_style(html: str, tag: str, style: str) -> str:
+    """给某类标签追加内联样式（已有 style 就合并，不覆盖）"""
+    def repl(m):
+        attrs = m.group(1) or ""
+        if re.search(r'style="', attrs):
+            attrs = re.sub(
+                r'style="([^"]*)"',
+                lambda mm: f'style="{mm.group(1).rstrip(";")};{style}"',
+                attrs, count=1)
+        else:
+            attrs = attrs + f' style="{style}"'
+        return f"<{tag}{attrs}>"
+
+    return re.sub(rf"<{tag}(?=[\s>])([^>]*)>", repl, html)
+
+
+def style_tables(html: str, theme_id: str = "default") -> str:
+    """把 Markdown 出来的裸 <table> 加工成公众号里能看的样子。
+
+    主题 CSS 里没有表格规则（微信也不支持外部样式），所以这里直接写内联：
+    浅色表头底 + 细边框 + 舒适内边距 + 斑马纹 + 横向滚动兜底。
+    """
+    if "<table" not in (html or ""):
+        return html
+
+    color = THEME_COLORS.get(theme_id) or "#5b6b6b"
+    if not re.fullmatch(r"#[0-9a-fA-F]{6}", color or ""):
+        color = "#5b6b6b"
+
+    head_bg = _hex_to_rgba(color, 0.08)
+    zebra = _hex_to_rgba(color, 0.03)
+    border = "rgba(0,0,0,0.10)"
+    text = "#2f3437"
+
+    def one(match):
+        t = match.group(0)
+        if "border-collapse:collapse" in t:      # 已经加工过，直接跳过
+            return t
+
+        # Notion 没有表头时我们会造一个空表头，渲染上直接去掉
+        thead = re.search(r"<thead>(.*?)</thead>", t, re.S)
+        if thead and not re.sub(r"<[^>]+>|&nbsp;|\s", "", thead.group(1)):
+            t = t[:thead.start()] + t[thead.end():]
+
+        t = _add_style(t, "table",
+                       "width:100%;border-collapse:collapse;border-spacing:0;"
+                       "font-size:13px;line-height:1.6;word-break:break-word;margin:0;")
+        t = _add_style(t, "th",
+                       f"padding:8px 10px;border:1px solid {border};background:{head_bg};"
+                       f"font-weight:600;color:{text};text-align:left;font-size:13px;")
+        t = _add_style(t, "td",
+                       f"padding:8px 10px;border:1px solid {border};"
+                       f"vertical-align:top;color:{text};font-size:13px;")
+
+        # 斑马纹：数据行隔行加浅底
+        parts = re.split(r"(<tr\b[^>]*>.*?</tr>)", t, flags=re.S)
+        merged, idx = [], 0
+        for part in parts:
+            if re.match(r"<tr\b", part or ""):
+                idx += 1
+                if idx > 1 and idx % 2 == 0:
+                    part = _add_style(part, "td", f"background:{zebra};")
+            merged.append(part)
+        t = "".join(merged)
+
+        return f'<section style="overflow-x:auto;margin:1.2em 0;">{t}</section>'
+
+    return _TABLE_TAG_RE.sub(one, html)
+
+
 def markdown_to_html(md_content: str) -> str:
-    """Markdown → 原始 HTML（无样式）"""
+    """Markdown → 原始 HTML（无样式）
+
+    先做一遍表格修复：Notion 里粘贴的 markdown 表格常被空行拆散、
+    或缺少 GFM 必需的分隔行，不修的话会渲染成裸竖线文字。
+    """
+    md_content = merge_pipe_tables(md_content or "")
     return markdown.markdown(
         md_content,
         extensions=['fenced_code', 'tables', 'nl2br']
@@ -217,6 +414,7 @@ def apply_theme_for_preview(html: str, theme_id: str = "default") -> str:
     预览页直接用 <style> 标签加载 CSS，渲染效果完整。
     """
     css = _get_theme_css(theme_id)
+    html = style_tables(html, theme_id)
     return f'<style>\n{css}\n</style>\n<section id="wenyan">\n{html}\n</section>'
 
 
@@ -271,7 +469,8 @@ def apply_theme_for_publish(html: str, theme_id: str = "default") -> str:
     if pseudo_css.strip():
         result = f'<style>{pseudo_css}</style>\n{result}'
 
-    return result
+    # 表格：微信不支持外部样式，这里全部转成内联
+    return style_tables(result, theme_id)
 
 
 def _inject_list_prefixes(html: str) -> str:
