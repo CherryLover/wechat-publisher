@@ -39,6 +39,8 @@ h1{margin:0;font-size:22px;font-weight:600;letter-spacing:-.2px}
 label.lbl{display:block;font-size:13px;font-weight:500;margin-bottom:6px}
 input[type=text]{width:100%;height:36px;padding:0 11px;border:1px solid #e4e4e7;border-radius:6px;font-size:13px;color:#09090b;background:#fff;font-family:inherit}
 input[type=text]:focus{outline:none;border-color:#07c160}
+select{width:100%;height:36px;padding:0 9px;border:1px solid #e4e4e7;border-radius:6px;font-size:13px;color:#09090b;background:#fff;font-family:inherit}
+select:focus{outline:none;border-color:#07c160}
 .hint{margin:6px 0 0;font-size:12px;color:#a1a1aa}
 .field{margin-bottom:12px}
 .two{display:grid;grid-template-columns:1fr 1fr;gap:12px}
@@ -82,6 +84,10 @@ input[type=text]:focus{outline:none;border-color:#07c160}
       <a href="/">
         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
         文章
+      </a>
+      <a href="/usage">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 3v18h18"/><path d="M18 17V9"/><path d="M13 17V5"/><path d="M8 17v-3"/></svg>
+        用量
       </a>
       <a class="active" href="/settings">
         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
@@ -179,6 +185,87 @@ input[type=text]:focus{outline:none;border-color:#07c160}
           </div>
         </section>
 
+        <section class="card">
+          <div class="card-head" style="display:flex;align-items:center;gap:8px">
+            <h2 style="margin:0">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#71717a" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.1-3.1a2 2 0 0 0-2.8 0L6 21"/></svg>
+              AI 配图
+            </h2>
+            <label class="switch" style="margin-left:auto">
+              <span style="font-size:12px;color:#71717a">启用</span>
+              <input type="checkbox" name="ai_enabled" {% if cfg.ai_images.enabled %}checked{% endif %}>
+              <span class="track"><span class="thumb"></span></span>
+            </label>
+          </div>
+          <div class="card-body">
+            <p class="hint" style="margin:0 0 14px">发布时先用文生文模型读文章、出 4 条提示词，再用生图模型生成 <b>1 张封面 + 3 张插图</b>；插图插在哪个小节后面由模型读完后决定，生成完会回写一份到 Notion。</p>
+
+            <div class="field">
+              <label class="lbl" for="ai_base_url">Base URL</label>
+              <input id="ai_base_url" type="text" name="ai_base_url" value="{{ cfg.ai_images.base_url }}" placeholder="https://api.example.com/v1">
+            </div>
+
+            <div class="field">
+              <label class="lbl" for="ai_api_key">API Key</label>
+              <input id="ai_api_key" type="text" name="ai_api_key" value="{{ cfg.ai_images.api_key }}" placeholder="sk-...">
+              <p class="hint">留空 = 沿用已保存的 Key；明文存在服务器 data/config.json</p>
+            </div>
+
+            <div class="two">
+              <div class="field">
+                <label class="lbl" for="ai_text_model">文生文模型</label>
+                <input id="ai_text_model" type="text" name="ai_text_model" value="{{ cfg.ai_images.text_model }}" placeholder="gpt-6.1-sol">
+              </div>
+              <div class="field">
+                <label class="lbl" for="ai_image_model">生图模型</label>
+                <input id="ai_image_model" type="text" name="ai_image_model" value="{{ cfg.ai_images.image_model }}" placeholder="gpt-5.6-luna">
+              </div>
+            </div>
+
+            <div class="two">
+              <div class="field">
+                <label class="lbl" for="ai_image_api">生图方式</label>
+                <select id="ai_image_api" name="ai_image_api">
+                  <option value="auto" {% if cfg.ai_images.image_api == 'auto' %}selected{% endif %}>自动（推荐）</option>
+                  <option value="images" {% if cfg.ai_images.image_api == 'images' %}selected{% endif %}>images/generations</option>
+                  <option value="responses" {% if cfg.ai_images.image_api == 'responses' %}selected{% endif %}>responses + image_generation</option>
+                </select>
+              </div>
+              <div class="field">
+                <label class="lbl" for="ai_max_width">出图压缩宽度</label>
+                <input id="ai_max_width" type="text" name="ai_max_width" value="{{ cfg.ai_images.max_width }}" placeholder="1200">
+              </div>
+            </div>
+
+            <div class="field">
+              <label class="lbl" for="ai_style">风格描述（可选）</label>
+              <input id="ai_style" type="text" name="ai_style" value="{{ cfg.ai_images.style }}" placeholder="留空用内置：米白底、青绿主色 + 杏橙点缀、扁平手绘">
+            </div>
+
+            <div class="two">
+              <div class="field">
+                <label class="lbl" for="ai_cover_size">封面尺寸</label>
+                <input id="ai_cover_size" type="text" name="ai_cover_size" value="{{ cfg.ai_images.cover_size }}" placeholder="1536x1024">
+              </div>
+              <div class="field">
+                <label class="lbl" for="ai_illustration_size">插图尺寸</label>
+                <input id="ai_illustration_size" type="text" name="ai_illustration_size" value="{{ cfg.ai_images.illustration_size }}" placeholder="1536x1024">
+              </div>
+            </div>
+
+            <div class="checks" style="margin-top:2px">
+              <label class="check"><input type="checkbox" name="ai_write_notion" {% if cfg.ai_images.write_to_notion %}checked{% endif %}>生成的图回写 Notion（页面封面 + 标题后的插图块）</label>
+            </div>
+          </div>
+          <div class="card-foot">
+            <button type="button" class="btn" id="test-ai-btn">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m22 2-7 20-4-9-9-4Z"/><path d="M22 2 11 13"/></svg>
+              测通模型接口
+            </button>
+            <span class="hint" id="test-ai-msg" style="margin:0">只拉一次模型列表，不消耗生图额度（先保存再测）</span>
+          </div>
+        </section>
+
         <div class="save-row">
           <button type="submit" class="btn btn-primary" style="height:36px;padding:0 18px">保存配置</button>
           <span class="note">保存后立即生效</span>
@@ -249,6 +336,25 @@ input[type=text]:focus{outline:none;border-color:#07c160}
         else msg.textContent = '没发出去：' + (data.reason || data.status || '未知原因');
       } catch (e) {
         msg.textContent = '请求失败：' + e.message;
+      }
+    });
+  }
+
+  var aiBtn = document.getElementById('test-ai-btn');
+  var aiMsg = document.getElementById('test-ai-msg');
+  if (aiBtn) {
+    aiBtn.addEventListener('click', async function () {
+      aiMsg.textContent = '检测中…';
+      try {
+        var resp = await fetch('/settings/test-ai', { method: 'POST' });
+        var d = await resp.json();
+        if (!d.ok) { aiMsg.textContent = '不通：' + (d.reason || '未知原因'); return; }
+        var bits = ['接口通，共 ' + d.models + ' 个模型'];
+        if (d.text_model_found === false) bits.push('⚠️ 文生文模型没找到');
+        if (d.image_model_found === false) bits.push('⚠️ 生图模型没找到');
+        aiMsg.textContent = bits.join('；');
+      } catch (e) {
+        aiMsg.textContent = '请求失败：' + e.message;
       }
     });
   }

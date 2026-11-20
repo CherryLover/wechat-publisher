@@ -31,6 +31,20 @@ DEFAULTS = {
         },
         "events": {"start": True, "success": True, "error": True},
     },
+    # AI 配图：文章 → 1 封面 + 3 插图
+    "ai_images": {
+        "enabled": False,            # 全局开关，关了就完全不碰模型
+        "base_url": "",              # OpenAI 兼容地址，如 https://xxx/v1
+        "api_key": "",
+        "text_model": "",            # 文生文：读文章出 4 条提示词
+        "image_model": "",           # 生图模型（responses 方式下填承担生图工具的模型）
+        "image_api": "auto",         # auto | images | responses
+        "style": "",                 # 额外风格描述，留空用内置默认
+        "write_to_notion": True,     # 生成的图回写 Notion（封面 + 插图块）
+        "max_width": 1200,           # 出图后压缩宽度
+        "cover_size": "1536x1024",
+        "illustration_size": "1536x1024",
+    },
 }
 
 _lock = threading.Lock()

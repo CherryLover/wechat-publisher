@@ -18,6 +18,8 @@ from typing import Optional
 from dotenv import load_dotenv
 
 from . import article
+from . import imagegen
+from . import usage
 from .wechat import WechatAPI
 from .html_convert import (
     markdown_to_html,
@@ -383,12 +385,28 @@ async def publish_article(article_id: str) -> dict:
     try:
         base_url = get_base_url()
 
-        # 转换本地图片为微信图片
-        wx_html_content = await convert_local_images_to_wechat(art.html_content, base_url)
+        # AI 配图（可选，受设置页全局开关控制）
+        # 手动/MCP 文章没有 Notion 页面，图只落在本地并插进正文
+        html_content = art.html_content
+        ai_cover: Optional[bytes] = None
+        try:
+            ai = await imagegen.build(art.title, art.content, ref=article_id,
+                                      upload_dir=UPLOAD_DIR, base=base_url)
+            if ai.items or ai.cover_url:
+                html_content = markdown_to_wechat_html(ai.markdown, art.theme_id)
+                ai_cover = ai.cover_bytes
+                print(f"AI 配图完成：封面 {bool(ai.cover_bytes)}，插图 {len(ai.items)} 张")
+        except Exception as ai_err:
+            print(f"AI 配图失败，按原文发布：{ai_err}")
 
-        # 从 Unsplash 获取随机封面图（900x383, 质量 80%）
+        # 转换本地图片为微信图片
+        wx_html_content = await convert_local_images_to_wechat(html_content, base_url)
+
+        # 封面：优先 AI 生成封面，其次 Unsplash 随机图，最后内置默认图
         unsplash_key = os.getenv("UNSPLASH_ACCESS_KEY")
-        if unsplash_key:
+        if ai_cover:
+            thumb_data = ai_cover
+        elif unsplash_key:
             async with httpx.AsyncClient(timeout=15) as client:
                 api_resp = await client.get(
                     "https://api.unsplash.com/photos/random",

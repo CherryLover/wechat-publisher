@@ -1,0 +1,219 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>用量 · 发布台</title>
+<style>
+*{box-sizing:border-box}
+body{margin:0;background:#fafafa;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif;-webkit-font-smoothing:antialiased;color:#09090b}
+a{color:inherit;text-decoration:none}
+.top{background:#fff;border-bottom:1px solid #e4e4e7}
+.top-inner{max-width:1200px;margin:0 auto;padding:0 24px;height:56px;display:flex;align-items:center;gap:28px}
+.brand{display:flex;align-items:center;gap:9px}
+.mark{width:28px;height:28px;border-radius:7px;background:#07c160;display:flex;align-items:center;justify-content:center}
+.brand-name{font-size:14px;font-weight:600}
+nav{display:flex;align-items:center;gap:4px}
+nav a{display:inline-flex;align-items:center;gap:7px;height:32px;padding:0 11px;border-radius:7px;font-size:13px;font-weight:500;color:#71717a}
+nav a.active{background:#f4f4f5;color:#09090b}
+.top-right{margin-left:auto;display:flex;align-items:center;gap:10px}
+.user{display:flex;align-items:center;gap:8px;padding-left:10px;border-left:1px solid #e4e4e7;font-size:13px;color:#3f3f46}
+.avatar{width:26px;height:26px;border-radius:50%;background:#e4e4e7;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:600;color:#52525b;overflow:hidden}
+.avatar img{width:100%;height:100%;object-fit:cover}
+main{max-width:1200px;margin:0 auto;padding:28px 24px 40px}
+h1{margin:0;font-size:22px;font-weight:600;letter-spacing:-.2px}
+.sub{margin:5px 0 0;font-size:13px;color:#71717a}
+.page-head{display:flex;align-items:flex-end;justify-content:space-between;margin-bottom:20px;gap:16px;flex-wrap:wrap}
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:20px}
+.stat{background:#fff;border:1px solid #e4e4e7;border-radius:9px;padding:14px 16px}
+.stat .k{font-size:12px;color:#71717a;margin-bottom:6px}
+.stat .v{font-size:23px;font-weight:600;line-height:1.1;font-variant-numeric:tabular-nums}
+.stat .s{font-size:11px;color:#a1a1aa;margin-top:4px}
+.card{background:#fff;border:1px solid #e4e4e7;border-radius:9px;margin-bottom:16px;overflow:hidden}
+.card-head{padding:13px 16px;border-bottom:1px solid #f4f4f5;display:flex;align-items:center;gap:8px}
+.card-head h2{margin:0;font-size:13px;font-weight:600}
+.card-head .n{margin-left:auto;font-size:12px;color:#a1a1aa}
+table{width:100%;border-collapse:collapse}
+th{text-align:left;font-size:12px;font-weight:500;color:#71717a;background:#fafafa;padding:9px 16px;border-bottom:1px solid #e4e4e7;white-space:nowrap}
+td{font-size:13px;padding:10px 16px;border-bottom:1px solid #f4f4f5;vertical-align:middle}
+tr:last-child td{border-bottom:none}
+.num{text-align:right;font-variant-numeric:tabular-nums}
+.dim{color:#71717a;font-size:12px}
+.badge{display:inline-flex;align-items:center;border:1px solid #d5f2e3;background:#f0fdf5;color:#0b7a44;font-size:11px;font-weight:500;padding:2px 8px;border-radius:999px}
+.badge.gray{border-color:#e4e4e7;background:#fafafa;color:#52525b}
+.badge.red{border-color:#fecdd3;background:#fff1f2;color:#be123c}
+.empty{padding:40px 16px;text-align:center;color:#a1a1aa;font-size:13px}
+.tip{background:#f0fdf5;border:1px solid #d5f2e3;color:#0b7a44;font-size:13px;padding:10px 14px;border-radius:7px;margin-bottom:16px}
+.tip.off{background:#fffbeb;border-color:#fde68a;color:#92400e}
+.scroll{max-height:520px;overflow:auto}
+.mono{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12px;color:#52525b}
+@media (max-width:820px){
+  .stats{grid-template-columns:repeat(2,1fr)}
+  .top-inner{gap:12px;padding:0 14px}
+  .brand-name{display:none}
+  .hide-sm{display:none}
+}
+</style>
+</head>
+<body>
+
+<div class="top">
+  <div class="top-inner">
+    <div class="brand">
+      <span class="mark">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m22 2-7 20-4-9-9-4Z"/><path d="M22 2 11 13"/></svg>
+      </span>
+      <span class="brand-name">程序杂念 · 发布台</span>
+    </div>
+    <nav>
+      <a href="/">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+        文章
+      </a>
+      <a class="active" href="/usage">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 3v18h18"/><path d="M18 17V9"/><path d="M13 17V5"/><path d="M8 17v-3"/></svg>
+        用量
+      </a>
+      <a href="/settings">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+        设置
+      </a>
+    </nav>
+    <div class="top-right">
+      <div class="user">
+        <span class="avatar">{% if user.picture %}<img src="{{ user.picture }}" alt="">{% else %}{{ (user.name or '?')[:1] }}{% endif %}</span>
+        <span>{{ user.name }}</span>
+        <a href="/logout" aria-label="退出登录" style="display:inline-flex;color:#a1a1aa">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+        </a>
+      </div>
+    </div>
+  </div>
+</div>
+
+<main>
+  <div class="page-head">
+    <div>
+      <h1>用量</h1>
+      <p class="sub">AI 配图的每一次模型调用都记在这里，按篇 / 按步骤 / 按次都能看</p>
+    </div>
+  </div>
+
+  {% if not ai_on %}
+  <div class="tip off">AI 配图当前是关闭的。<a href="/settings" style="text-decoration:underline">去设置里打开</a>之后，发布时才会产生用量。</div>
+  {% endif %}
+
+  <div class="stats">
+    <div class="stat">
+      <div class="k">总 Token</div>
+      <div class="v">{{ "{:,}".format(totals.total_tokens) }}</div>
+      <div class="s">输入 {{ "{:,}".format(totals.prompt_tokens) }} / 输出 {{ "{:,}".format(totals.completion_tokens) }}</div>
+    </div>
+    <div class="stat">
+      <div class="k">生成图片</div>
+      <div class="v">{{ totals.images }}</div>
+      <div class="s">张</div>
+    </div>
+    <div class="stat">
+      <div class="k">调用次数</div>
+      <div class="v">{{ totals.calls }}</div>
+      <div class="s">失败 {{ totals.errors }} 次</div>
+    </div>
+    <div class="stat">
+      <div class="k">覆盖文章</div>
+      <div class="v">{{ articles|length }}</div>
+      <div class="s">篇（最近 30 篇）</div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-head"><h2>按步骤</h2><span class="n">所有文章的合计</span></div>
+    {% if steps %}
+    <table>
+      <thead><tr><th>步骤</th><th class="num">调用</th><th class="num">Token</th><th class="num">图片</th></tr></thead>
+      <tbody>
+      {% for s in steps %}
+        <tr>
+          <td>{{ s.step }}</td>
+          <td class="num">{{ s.calls }}</td>
+          <td class="num">{{ "{:,}".format(s.tokens) }}</td>
+          <td class="num">{{ s.images }}</td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+    <div class="empty">还没有调用记录</div>
+    {% endif %}
+  </div>
+
+  <div class="card">
+    <div class="card-head"><h2>单篇用量</h2><span class="n">按最近使用排序</span></div>
+    {% if articles %}
+    <table>
+      <thead>
+        <tr>
+          <th>文章</th>
+          <th class="num">调用</th>
+          <th class="num">Token</th>
+          <th class="num">图片</th>
+          <th class="hide-sm">最近一次</th>
+        </tr>
+      </thead>
+      <tbody>
+      {% for a in articles %}
+        <tr>
+          <td>
+            <div style="font-size:13px">{{ a.title }}</div>
+            <div class="dim mono">{{ a.ref }}</div>
+          </td>
+          <td class="num">{{ a.calls }}</td>
+          <td class="num">{{ "{:,}".format(a.tokens) }}</td>
+          <td class="num">{{ a.images }}</td>
+          <td class="dim hide-sm">{{ a.last_at }}</td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+    <div class="empty">还没有单篇记录</div>
+    {% endif %}
+  </div>
+
+  <div class="card">
+    <div class="card-head"><h2>最近调用</h2><span class="n">最近 50 次</span></div>
+    {% if recent %}
+    <div class="scroll">
+    <table>
+      <thead>
+        <tr>
+          <th>时间</th><th>步骤</th><th class="hide-sm">模型</th>
+          <th class="num">Token</th><th class="num">图</th>
+          <th class="num hide-sm">耗时</th><th>状态</th>
+        </tr>
+      </thead>
+      <tbody>
+      {% for r in recent %}
+        <tr>
+          <td class="dim">{{ r.at }}</td>
+          <td>{{ r.step }}</td>
+          <td class="dim mono hide-sm">{{ r.model }}</td>
+          <td class="num">{{ "{:,}".format(r.tokens) }}</td>
+          <td class="num">{{ r.images }}</td>
+          <td class="num dim hide-sm">{{ (r.ms / 1000)|round(1) }}s</td>
+          <td>
+            {% if r.ok %}<span class="badge">OK</span>
+            {% else %}<span class="badge red" title="{{ r.error }}">失败</span>{% endif %}
+          </td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+    </div>
+    {% else %}
+    <div class="empty">还没有调用记录</div>
+    {% endif %}
+  </div>
+</main>
+</body>
+</html>

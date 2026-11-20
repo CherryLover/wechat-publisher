@@ -115,6 +115,35 @@ class NotionSource:
         ]}}}
         await self._request("PATCH", f"/pages/{page_id}", payload)
 
+    # ---------- 回写 AI 配图 ----------
+
+    async def set_page_cover(self, page_id: str, url: str, only_if_empty: bool = True) -> bool:
+        """把页面封面设成某张图。only_if_empty=True 时不覆盖用户自己设的封面。"""
+        page = await self.get_page(page_id)
+        if only_if_empty and page.get("cover"):
+            logger.info("页面已有封面，跳过 AI 封面回写")
+            return False
+        await self._request("PATCH", f"/pages/{page_id}", {
+            "cover": {"type": "external", "external": {"url": url}},
+        })
+        return True
+
+    async def append_image_after(self, page_id: str, after_id: Optional[str],
+                                 url: str, caption: str) -> None:
+        """在某个块后面插入一张外链图片块"""
+        block = {
+            "object": "block",
+            "type": "image",
+            "image": {
+                "type": "external",
+                "external": {"url": url},
+                "caption": [{"type": "text", "text": {"content": (caption or "")[:200]}}],
+            },
+        }
+        payload: dict = {"children": [block]}
+        if after_id:
+            payload["after"] = after_id
+        await self._request("PATCH", f"/blocks/{page_id}/children", payload)
 
 # ---------- 块 → Markdown ----------
 
@@ -138,6 +167,12 @@ def _rich(rich_text: list) -> str:
             text = f"[{text}]({href})"
         out.append(text)
     return "".join(out)
+
+
+def _norm_text(s: str) -> str:
+    """比较标题用：去掉所有空白、转小写"""
+    import re
+    return re.sub(r"\s+", "", (s or "")).strip().lower()
 
 
 def _image_url(block: dict) -> Optional[str]:

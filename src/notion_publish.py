@@ -13,13 +13,16 @@ from typing import Optional
 import httpx
 
 from . import article as article_store
-from .config import get_theme
+from . import imagegen
+from .config import get_theme, load_config
 from .html_convert import markdown_to_wechat_html
-from .notion_source import NotionSource, NotionError, page_to_markdown
+from .notion_source import NotionSource, NotionError, page_to_markdown, _norm_text, _rich
 from .notify import notify_event
 from .wechat import WechatAPI
 
 logger = logging.getLogger(__name__)
+
+UPLOAD_DIR = Path(os.getenv("UPLOAD_DIR", "/app/uploads"))
 
 # 触发发布的动作状态
 TRIGGER_STATUS = "发布"
@@ -124,6 +127,64 @@ def _digest(md: str) -> str:
     return text[:50]
 
 
+async def write_back_images(source: NotionSource, page_id: str, ai) -> None:
+    """把 AI 生成的图写回 Notion：页面封面 + 标题后面的插图块（幂等）"""
+    cfg = load_config().get("ai_images") or {}
+    if not cfg.get("write_to_notion", True) or ai is None:
+        return
+
+    if ai.cover_url:
+        try:
+            await source.set_page_cover(page_id, ai.cover_url)
+            logger.info("已回写 Notion 封面: %s", ai.cover_url.rsplit("/", 1)[-1])
+        except Exception as e:
+            logger.warning("回写 Notion 封面失败: %s", e)
+
+    # 一次取全子块：既拿标题锚点，也用来判重（别再一张一张查）
+    try:
+        blocks = await source.get_children(page_id)
+    except Exception as e:
+        logger.warning("读取 Notion 子块失败，跳过插图回写: %s", e)
+        return
+
+    heads: dict[str, str] = {}
+    existing: set[str] = set()
+    for b in blocks:
+        kind = b.get("type")
+        if kind in ("heading_1", "heading_2", "heading_3"):
+            text = _norm_text(_rich((b.get(kind) or {}).get("rich_text")))
+            if text:
+                heads[text] = b.get("id")
+        elif kind == "image":
+            img = b.get("image") or {}
+            url = ((img.get("external") or {}).get("url")
+                   or (img.get("file") or {}).get("url") or "")
+            if url:
+                existing.add(url.rsplit("/", 1)[-1])
+
+    for it in ai.items:
+        url = it.get("url")
+        if not url:
+            continue
+        name = url.rsplit("/", 1)[-1]
+        if name in existing:
+            logger.info("Notion 里已有 %s，跳过", name)
+            continue
+        try:
+            target = _norm_text(it.get("heading") or "")
+            anchor = heads.get(target)
+            if anchor is None and target:
+                for text, bid in heads.items():
+                    if target in text or text in target:
+                        anchor = bid
+                        break
+            await source.append_image_after(page_id, anchor, url, it.get("alt") or "")
+            logger.info("已回写 Notion 插图 %s（锚点：%s）",
+                        name, it.get("heading") or "页面末尾")
+        except Exception as e:
+            logger.warning("回写 Notion 插图失败 %s: %s", name, e)
+
+
 async def publish_page(
     page_id: str,
     source: NotionSource,
@@ -158,12 +219,22 @@ async def publish_page(
         if not title or not md.strip():
             raise ValueError("页面没有正文内容")
 
+        # AI 配图（可选，受设置页全局开关控制）：1 张封面 + 3 张插图
+        # 插图由模型自己读文章决定放在哪个小节后面，插完再把 Markdown 交给排版
+        ai = None
+        try:
+            ai = await imagegen.build(title, md, ref=page_id, upload_dir=UPLOAD_DIR)
+            md = ai.markdown
+        except Exception as e:
+            logger.warning("AI 配图失败，按无图流程继续：%s", e)
+
         md, first_image = await _transfer_images(md, wechat)
 
         theme_id = get_theme()
         html = markdown_to_wechat_html(md, theme_id)
 
-        cover = await _pick_cover(first_image, wechat, os.getenv("UNSPLASH_ACCESS_KEY", ""))
+        cover = (ai.cover_bytes if ai and ai.cover_bytes else None) or \
+            await _pick_cover(first_image, wechat, os.getenv("UNSPLASH_ACCESS_KEY", ""))
         thumb_media_id = await wechat.upload_thumb(cover, "cover.jpg")
 
         media_id = await wechat.create_draft(
@@ -182,6 +253,12 @@ async def publish_page(
             )
         except Exception as store_err:
             logger.warning("写入文章库失败: %s", store_err)
+
+        # 把 AI 图回写 Notion（封面 + 插图块），失败不影响出版
+        try:
+            await write_back_images(source, page_id, ai)
+        except Exception as wb_err:
+            logger.warning("回写 Notion 配图失败: %s", wb_err)
 
         await source.set_select(page_id, "状态", STATUS_PUBLISHED)
         await notify_event("success", "发布成功", f"「{title}」已进草稿箱，去后台点发表。")

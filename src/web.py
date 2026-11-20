@@ -14,7 +14,7 @@ from fastapi import APIRouter, Request
 from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 
-from . import article, config, notify, oidc
+from . import article, config, imagegen, notify, oidc, usage
 from .auth import create_preview_token
 from .html_convert import list_themes
 
@@ -205,6 +205,29 @@ async def save_settings(request: Request):
     if not cfg["notify"]["bark"]["key"]:
         cfg["notify"]["bark"]["key"] = ((old.get("notify") or {}).get("bark") or {}).get("key", "")
 
+    # ---- AI 配图 ----
+    ai_old = old.get("ai_images") or {}
+    try:
+        max_width = int(form.get("ai_max_width") or ai_old.get("max_width") or 1200)
+    except (TypeError, ValueError):
+        max_width = 1200
+    cfg["ai_images"] = {
+        "enabled": form.get("ai_enabled") == "on",
+        "base_url": (form.get("ai_base_url") or "").strip(),
+        "api_key": (form.get("ai_api_key") or "").strip(),
+        "text_model": (form.get("ai_text_model") or "").strip(),
+        "image_model": (form.get("ai_image_model") or "").strip(),
+        "image_api": (form.get("ai_image_api") or "auto").strip() or "auto",
+        "style": (form.get("ai_style") or "").strip(),
+        "write_to_notion": form.get("ai_write_notion") == "on",
+        "max_width": max_width,
+        "cover_size": (form.get("ai_cover_size") or "1536x1024").strip(),
+        "illustration_size": (form.get("ai_illustration_size") or "1536x1024").strip(),
+    }
+    # API Key 留空 = 沿用旧的
+    if not cfg["ai_images"]["api_key"]:
+        cfg["ai_images"]["api_key"] = ai_old.get("api_key", "")
+
     config.save_config(cfg)
     logger.info("设置已保存: theme=%s", cfg["theme"])
     return RedirectResponse("/settings?saved=1", status_code=303)
@@ -218,3 +241,33 @@ async def test_notify(request: Request):
 
     result = await notify.send("发布台 · 测试通知", "如果你看到这条，说明 Bark 配好了。")
     return JSONResponse(result)
+
+
+@router.post("/settings/test-ai")
+async def test_ai(request: Request):
+    """测试模型接口连通性：只拉模型列表，不烧生图额度。"""
+    user = current_user(request)
+    if not user:
+        return JSONResponse({"ok": False, "reason": "unauthorized"}, status_code=401)
+
+    result = await imagegen.test_connection()
+    return JSONResponse(result)
+
+
+# ---------- 用量 ----------
+
+@router.get("/usage", response_class=HTMLResponse)
+async def usage_page(request: Request):
+    user = current_user(request)
+    if not user:
+        return RedirectResponse("/login", status_code=303)
+
+    return templates.TemplateResponse("usage.html", {
+        "request": request,
+        "user": user,
+        "totals": usage.totals(),
+        "steps": usage.by_step(),
+        "articles": usage.by_article(30),
+        "recent": usage.recent(50),
+        "ai_on": bool(((config.load_config().get("ai_images") or {}).get("enabled"))),
+    })
