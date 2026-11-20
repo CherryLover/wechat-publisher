@@ -39,8 +39,7 @@ DEFAULTS = {
         "text_model": "",            # 文生文：读文章出 4 条提示词
         "image_model": "",           # 生图模型（responses 方式下填承担生图工具的模型）
         "image_api": "auto",         # auto | images | responses
-        "style_mode": "auto",        # auto：模型按文章挑风格 | fixed：固定下面那串
-        "style_allow": [],           # auto 模式允许的风格 id，空=全部
+        "style_mode": "auto",        # auto：模型按文章自由设计风格 | fixed：固定下面那串
         "style": "",                 # fixed 模式的风格描述
         "write_to_notion": True,     # 生成的图回写 Notion（封面 + 插图块）
         "max_width": 1200,           # 出图后压缩宽度

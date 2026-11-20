@@ -55,14 +55,16 @@ PLAN_SYSTEM = """你是一位资深公众号视觉编辑，擅长给技术类文
    - after_paragraph：插在这个标题下面第几个自然段之后（1 表示第一段之后，通常 1 最自然）
 6. prompt 一律用英文写，要具体画得出来：主体、动作、构图、视角、光线、配色。
 
-6. 风格不是固定的：从给定的「风格候选」里挑一套最贴合这篇文章气质的，
-   整篇 4 张图都用这一套；如果给了「最近用过」的清单，尽量别再选它们。
-7. 把选中的风格 id 填到 style_id；每张图的 prompt 都要体现这套风格的配色与笔触。
+6. 风格不预设：你读完文章后，自己为它设计一套视觉语言，整篇 4 张图共用这一套。
+   设计要写清：媒介与画法、2-3 个具体颜色、背景、光线、质感；不要用 abstract、
+   concept 这类空话。背景建议偏浅、对比清晰（缩到手机 400px 宽也要看得清）。
+7. 如果给了「最近用过的风格」，务必换一套——换媒介、换配色、换视角都算，
+   不要只是换个说法。
 
 只输出 JSON：
 {
-  "style_id": "从风格候选里选的 id（若给的是固定风格，填 custom）",
-  "style": "这套图的统一风格一句话（英文）",
+  "style_name": "你起的风格中文名（6-12 字，例如：冷调蓝图线稿）",
+  "style": "这套风格的完整英文描述（≥40 词：媒介/配色/背景/光线/质感）",
   "cover": {"subject": "对应文章哪个主题（中文）", "prompt": "英文提示词", "alt": "中文图注 10-20 字"},
   "illustrations": [
     {"heading": "## 标题原文（不含 ##）", "after_paragraph": 1, "why": "为什么配在这里（中文）", "prompt": "英文提示词", "alt": "中文图注 10-20 字"},
@@ -162,45 +164,61 @@ def apply_style(prompt: str, style_en: str) -> str:
     return p
 
 
-def resolve_style(cand: str, cfg: dict, ref: str, pool: list,
-                  fixed_style: Optional[dict] = None) -> tuple[dict, bool]:
-    """决定本篇用哪套风格。返回 (风格, 是否走了兜底)"""
+def resolve_style(plan: dict, fixed_style: Optional[dict] = None) -> tuple[dict, bool]:
+    """决定本篇用哪套风格。返回 ({id,name,desc_en}, 是否走了兜底)
+
+    模型自由设计，代码只做三件事：能用吗？和最近重复吗？名字给了吗？
+    """
     if fixed_style is not None:
         return fixed_style, False
 
-    pool_ids = [x["id"] for x in (pool or [])]
-    recent = imagestyles.recent_ids(4)
-    chosen = imagestyles.get(cand) if cand in pool_ids else None
-    if chosen is None:
-        return imagestyles.pick(ref, allow=cfg.get("style_allow"), recent=recent), True
-    # 模型选了最近刚用过的风格，且池子里还有别的选择 → 换一个
-    if cand in recent and len(pool_ids) > len(recent):
-        return imagestyles.pick(ref, allow=cfg.get("style_allow"), recent=recent), True
-    return chosen, False
+    text = (plan.get("style") or "").strip()
+    name = plan.get("style_name") or ""
 
+    fallback = {
+        "id": imagestyles.slug(imagestyles.DEFAULT_STYLE),
+        "name": imagestyles.DEFAULT_NAME,
+        "desc_en": imagestyles.DEFAULT_STYLE,
+    }
+    if not imagestyles.is_usable(text):
+        return fallback, True
+    if imagestyles.repeated(text, 4):
+        return fallback, True
+    return {
+        "id": imagestyles.slug(text),
+        "name": imagestyles.clean_name(name, text),
+        "desc_en": text,
+    }, False
 
 
 def _style_brief(cfg: dict):
-    """根据设置生成「风格说明」段落，并给出兜底风格"""
+    """返回 (风格说明, 固定风格 dict 或 None)"""
     mode = (cfg.get("style_mode") or "auto").lower()
-    allow = cfg.get("style_allow") or []
 
     if mode == "fixed":
         text = (cfg.get("style") or "").strip() or BASE_STYLE
         brief = f"固定风格（4 张图都必须严格照这套画）：{text}"
-        return brief, {"id": "custom", "name": "自定义", "desc_en": text}, []
+        return brief, {"id": "custom", "name": "自定义", "desc_en": text}
 
-    pool = imagestyles.allowed(allow)
-    recent = imagestyles.recent_ids(4)
-    catalog = imagestyles.prompt_catalog(pool)
-    recent_txt = ""
+    recent = imagestyles.recent_styles(4)
+    recent_txt = "这是近期第一篇，风格完全自由发挥。"
     if recent:
-        names = [f"{i}（{(imagestyles.get(i) or {}).get('name', i)}）" for i in recent]
-        recent_txt = "\n最近几篇已经用过这些风格，请尽量避开：" + "、".join(names)
-    brief = (f"风格候选（style_id 必须从中选一个）：\n{catalog}{recent_txt}\n"
-             f"候选之外的风格不要选；画面里不要出现文字。")
-    return brief, None, pool
+        lines = []
+        for i, r in enumerate(recent, 1):
+            snippet = (r["text"] or "")[:110]
+            lines.append(f"{i}. {r['name'] or '未命名'}：{snippet}")
+        recent_txt = ("最近几篇已经用过下面这些风格，请务必换一套（换媒介 / 换配色 / 换视角）：\n"
+                      + "\n".join(lines))
 
+    brief = ("风格不预设：请你读完文章后，自己为它设计一套视觉语言，4 张图共用这一套。\n"
+             "设计要求：\n"
+             "- 先判断文章气质（技术 / 科普 / 随笔 / 评论 / 产品…），选与之匹配的媒介与笔触\n"
+             "- 写清楚：媒介与画法、2-3 个具体颜色、背景、光线、质感\n"
+             "- 不要用 abstract、concept 这类空话，要能直接画出来\n"
+             "- 背景偏浅、对比清晰，缩到手机 400px 宽也要看得清\n"
+             "- 画面里不要出现任何文字、字母、数字、logo、水印\n\n"
+             + recent_txt)
+    return brief, None
 
 
 async def plan_prompts(cfg: dict, title: str, md: str,
@@ -211,7 +229,7 @@ async def plan_prompts(cfg: dict, title: str, md: str,
     if len(body) > MAX_BODY_CHARS:
         body = body[:MAX_BODY_CHARS] + "\n\n（正文过长，已截断）"
 
-    style_brief, fixed_style, pool = _style_brief(cfg)
+    style_brief, fixed_style = _style_brief(cfg)
     user_msg = (f"{style_brief}\n\n基础画风约束：{BASE_STYLE}\n\n"
                 f"文章标题：{title}\n\n正文：\n{body}\n\n请按约定输出 JSON。")
 
@@ -243,10 +261,9 @@ async def plan_prompts(cfg: dict, title: str, md: str,
             raise AIError(f"模型返回结构不对：{str(plan)[:200]}")
 
         # 风格校验：固定模式直接用；自动模式校验候选 + 避开最近用过
-        cand = (plan.get("style_id") or "").strip()
-        chosen, fallback = resolve_style(cand, cfg, article_ref or title, pool, fixed_style)
-        if fallback and fixed_style is None:
-            logger.info("风格未采用模型选择（%r），兜底为 %s", cand, chosen["id"])
+        chosen, fallback = resolve_style(plan, fixed_style)
+        if fallback:
+            logger.warning("模型给的风格不可用或与最近重复，改用兜底风格：%s", chosen["name"])
         plan["_style"] = chosen
         plan["_style_en"] = chosen.get("desc_en") or BASE_STYLE
         p, c, t = _tokens_from(data.get("usage"))
@@ -474,14 +491,14 @@ async def build(title: str, markdown: str, *, ref: str, upload_dir: Path,
     # plan_prompts 正常会把 _style 放进来；被替换/老计划时这里补一次兜底
     style = plan.get("_style")
     if not style:
-        _, fixed_style, pool = _style_brief(cfg)
-        style, _ = resolve_style((plan.get("style_id") or "").strip(),
-                                 cfg, ref, pool, fixed_style)
+        _, fixed_style = _style_brief(cfg)
+        style, _ = resolve_style(plan, fixed_style)
         plan["_style"] = style
         plan["_style_en"] = style.get("desc_en") or BASE_STYLE
     style_en = plan.get("_style_en") or BASE_STYLE
     try:
-        imagestyles.log_use(ref, style.get("id") or "custom", title)
+        imagestyles.log_use(ref, style.get("id") or "custom",
+                            style.get("name") or "", style_en, title)
     except Exception:
         pass
     logger.info("本篇配图风格：%s（%s）", style.get("name") or "自定义", style.get("id") or "custom")

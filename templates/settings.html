@@ -51,15 +51,7 @@ select:focus{outline:none;border-color:#07c160}
 .switch input:checked + .track{background:#07c160}
 .switch input:checked + .track .thumb{transform:translateX(16px)}
 .checks{display:flex;gap:18px;flex-wrap:wrap;align-items:center}
-.styles{display:grid;grid-template-columns:repeat(2,1fr);gap:8px}
-.style-opt input{position:absolute;opacity:0;width:0;height:0}
-.style-opt .box{display:flex;align-items:center;gap:8px;padding:8px 10px;border:1px solid #e4e4e7;border-radius:7px;cursor:pointer;background:#fff}
-.style-opt input:checked + .box{border-color:#07c160;background:#f0fdf5}
-.style-opt input:focus-visible + .box{outline:2px solid #07c160;outline-offset:2px}
-.style-opt .nm{font-size:12.5px;font-weight:500;color:#3f3f46;white-space:nowrap}
-.style-opt .mo{font-size:11px;color:#a1a1aa;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.dots{display:inline-flex;flex:none;gap:2px}
-.dots i{width:8px;height:8px;border-radius:2px;display:block}
+
 .check{display:flex;align-items:center;gap:7px;font-size:13px;color:#3f3f46;cursor:pointer}
 .check input{width:16px;height:16px;accent-color:#07c160;margin:0}
 .btn{display:inline-flex;align-items:center;gap:6px;height:34px;padding:0 13px;border:1px solid #e4e4e7;border-radius:6px;background:#fff;font-size:13px;font-weight:500;color:#09090b;font-family:inherit;cursor:pointer}
@@ -250,7 +242,7 @@ select:focus{outline:none;border-color:#07c160}
               <div class="field">
                 <label class="lbl" for="ai_style_mode">风格模式</label>
                 <select id="ai_style_mode" name="ai_style_mode">
-                  <option value="auto" {% if cfg.ai_images.style_mode != 'fixed' %}selected{% endif %}>自动 · 按文章气质挑一套</option>
+                  <option value="auto" {% if cfg.ai_images.style_mode != 'fixed' %}selected{% endif %}>自动 · 模型按文章自由设计</option>
                   <option value="fixed" {% if cfg.ai_images.style_mode == 'fixed' %}selected{% endif %}>固定 · 始终用同一套</option>
                 </select>
               </div>
@@ -260,23 +252,8 @@ select:focus{outline:none;border-color:#07c160}
               </div>
             </div>
 
-            <div class="field">
-              <label class="lbl">可用的风格池</label>
-              <div class="styles">
-                {% for s in styles %}
-                <label class="style-opt">
-                  <input type="checkbox" name="ai_style_allow" value="{{ s.id }}"
-                    {% if not cfg.ai_images.style_allow or s.id in cfg.ai_images.style_allow %}checked{% endif %}>
-                  <span class="box">
-                    <span class="dots">{% for c in s.colors %}<i style="background:{{ c }}"></i>{% endfor %}</span>
-                    <span class="nm">{{ s.name }}</span>
-                    <span class="mo">{{ s.mood }}</span>
-                  </span>
-                </label>
-                {% endfor %}
-              </div>
-              <p class="hint">自动模式下模型会按文章气质从勾选的风格里挑一套，并避开最近 4 篇用过的；全不勾 = 全部可用</p>
-            </div>
+            <p class="hint" style="margin:0 0 14px">自动模式下不给预设：模型会自己判断文章气质（技术/随笔/评论…），
+              现设计一套风格（媒介、配色、背景、光线），4 张图共用这一套，并避开最近 4 篇用过的风格。</p>
 
             <div class="two">
               <div class="field">
