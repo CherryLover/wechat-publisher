@@ -46,6 +46,11 @@ DEFAULTS = {
         "cover_size": "1536x1024",
         "illustration_size": "1536x1024",
     },
+    # 固定密码登录：默认关闭，仅 Pocket ID 登录后可在设置页开启
+    "password_login": {
+        "enabled": False,
+        "password_hash": "",
+    },
 }
 
 _lock = threading.Lock()

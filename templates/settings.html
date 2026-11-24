@@ -37,8 +37,10 @@ h1{margin:0;font-size:22px;font-weight:600;letter-spacing:-.2px}
 .theme-opt input:focus-visible + span.box{outline:2px solid #07c160;outline-offset:2px}
 .swatch{width:16px;height:16px;border-radius:4px;flex:none}
 label.lbl{display:block;font-size:13px;font-weight:500;margin-bottom:6px}
-input[type=text]{width:100%;height:36px;padding:0 11px;border:1px solid #e4e4e7;border-radius:6px;font-size:13px;color:#09090b;background:#fff;font-family:inherit}
-input[type=text]:focus{outline:none;border-color:#07c160}
+input[type=text],input[type=password]{width:100%;height:36px;padding:0 11px;border:1px solid #e4e4e7;border-radius:6px;font-size:13px;color:#09090b;background:#fff;font-family:inherit}
+input[type=text]:focus,input[type=password]:focus{outline:none;border-color:#07c160}
+input:disabled{background:#f4f4f5;color:#a1a1aa;cursor:not-allowed}
+.switch input:disabled + .track{opacity:.5;cursor:not-allowed}
 select{width:100%;height:36px;padding:0 9px;border:1px solid #e4e4e7;border-radius:6px;font-size:13px;color:#09090b;background:#fff;font-family:inherit}
 select:focus{outline:none;border-color:#07c160}
 .hint{margin:6px 0 0;font-size:12px;color:#a1a1aa}
@@ -111,7 +113,8 @@ select:focus{outline:none;border-color:#07c160}
   <h1>设置</h1>
   <p class="sub">主题、通知与登录方式</p>
 
-  {% if saved %}<div class="notice">配置已保存，立即生效。</div>{% endif %}
+  {% if pw_error %}<div class="notice warn">{{ pw_error }}</div>
+  {% elif saved %}<div class="notice">配置已保存，立即生效。</div>{% endif %}
 
   <form method="post" action="/settings">
     <div class="grid">
@@ -276,6 +279,32 @@ select:focus{outline:none;border-color:#07c160}
               测通模型接口
             </button>
             <span class="hint" id="test-ai-msg" style="margin:0">只拉一次模型列表，不消耗生图额度（先保存再测）</span>
+          </div>
+        </section>
+
+        <section class="card">
+          <div class="card-head" style="display:flex;align-items:center;gap:8px">
+            <h2 style="margin:0">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#71717a" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+              密码登录
+              {% if pw_has_password %}<span class="badge">已设置密码</span>{% endif %}
+            </h2>
+            <label class="switch" style="margin-left:auto">
+              <span style="font-size:12px;color:#71717a">启用</span>
+              <input type="checkbox" name="pw_login_enabled" {% if pw_enabled %}checked{% endif %} {% if not can_manage_password %}disabled{% endif %}>
+              <span class="track"><span class="thumb"></span></span>
+            </label>
+          </div>
+          <div class="card-body">
+            {% if not can_manage_password %}
+            <div class="notice warn" style="margin-bottom:12px">当前通过密码登录，仅支持在 Pocket ID 登录后开启、关闭或修改密码。</div>
+            {% endif %}
+            <p class="hint" style="margin:0 0 14px">默认关闭。开启后，除了 Pocket ID 之外，也可以在登录页使用这里的固定密码进入发布台。</p>
+            <div class="field" style="margin-bottom:0">
+              <label class="lbl" for="pw_login_password">固定登录密码</label>
+              <input id="pw_login_password" type="password" name="pw_login_password" autocomplete="new-password" placeholder="{% if pw_has_password %}已设置密码，留空保持不变{% else %}至少 6 位，留空则不设置{% endif %}" {% if not can_manage_password %}disabled{% endif %}>
+              <p class="hint">仅保存加盐 PBKDF2 哈希，不落明文；关闭开关后登录页立即隐藏密码入口。</p>
+            </div>
           </div>
         </section>
 

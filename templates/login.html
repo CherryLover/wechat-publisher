@@ -19,6 +19,14 @@ h1{margin:0 0 6px;font-size:17px;font-weight:600}
 .desc{margin:0 0 20px;font-size:13px;color:#71717a}
 .btn{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;height:40px;border:none;border-radius:7px;background:#07c160;color:#fff;font-size:14px;font-weight:500;font-family:inherit;cursor:pointer}
 .btn:hover{background:#06a852}
+.btn-sec{background:#fff;color:#09090b;border:1px solid #e4e4e7}
+.btn-sec:hover{background:#f4f4f5}
+.btn-disabled{background:#e4e4e7;color:#71717a;cursor:not-allowed;pointer-events:none}
+.field{margin-bottom:10px}
+.input{width:100%;height:40px;padding:0 12px;border:1px solid #e4e4e7;border-radius:7px;font-size:14px;color:#09090b;background:#fff;font-family:inherit}
+.input:focus{outline:none;border-color:#07c160}
+.err{margin:0 0 12px;padding:9px 12px;border-radius:7px;background:#fef2f2;border:1px solid #fecaca;color:#b91c1c;font-size:12px;line-height:1.5}
+.warn{margin:0 0 12px;padding:9px 12px;border-radius:7px;background:#fffbeb;border:1px solid #fde68a;color:#92400e;font-size:12px;line-height:1.5}
 .divider{display:flex;align-items:center;gap:10px;margin:18px 0}
 .divider span.line{flex:1;height:1px;background:#e4e4e7}
 .divider span.txt{font-size:11px;color:#a1a1aa}
@@ -39,20 +47,43 @@ h1{margin:0 0 6px;font-size:17px;font-weight:600}
 
     <div class="card">
       <h1>登录</h1>
+      {% if password_login_enabled %}
+      <p class="desc">支持 Pocket ID 或已开启的固定密码登录。</p>
+      {% else %}
       <p class="desc">用你自己的身份登录，不再单独维护密码。</p>
+      {% endif %}
 
+      {% if authorize_url %}
       <a class="btn" href="{{ authorize_url }}">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/><path d="m9 12 2 2 4-4"/></svg>
         使用 Pocket ID 登录
       </a>
+      {% else %}
+      <div class="warn">{{ oidc_error or 'Pocket ID 暂时不可用' }}</div>
+      {% endif %}
 
+      {% if password_login_enabled %}
+      <div class="divider"><span class="line"></span><span class="txt">或使用密码登录</span><span class="line"></span></div>
+
+      {% if pw_error %}
+      <div class="err">{{ pw_error }}</div>
+      {% endif %}
+
+      <form method="post" action="/login/password">
+        <div class="field">
+          <input class="input" type="password" name="password" placeholder="输入登录密码" autocomplete="current-password" required>
+        </div>
+        <button type="submit" class="btn btn-sec">使用密码登录</button>
+      </form>
+      {% else %}
       <div class="divider"><span class="line"></span><span class="txt">为什么是这个</span><span class="line"></span></div>
 
       <p class="note">认证交给 Pocket ID 统一处理，这边不保存任何密码。登录一次之后，会话有效期内不用再登。</p>
+      {% endif %}
 
       <div class="foot">
         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#a1a1aa" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
-        OpenID Connect · 由 Pocket ID 提供
+        {% if password_login_enabled %}Pocket ID · 固定密码登录已开启{% else %}OpenID Connect · 由 Pocket ID 提供{% endif %}
       </div>
     </div>
   </div>

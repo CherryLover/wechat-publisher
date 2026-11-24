@@ -14,7 +14,7 @@ from fastapi import APIRouter, Request
 from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 
-from . import article, config, imagegen, imagestyles, notify, oidc, usage
+from . import article, config, imagegen, imagestyles, notify, oidc, password_auth, usage
 from .auth import create_preview_token
 from .html_convert import list_themes
 
@@ -26,6 +26,34 @@ templates = Jinja2Templates(directory=Path(__file__).parent.parent / "templates"
 
 def current_user(request: Request) -> Optional[dict]:
     return oidc.read_session(request.cookies.get(oidc.SESSION_COOKIE))
+
+
+def _is_oidc_user(user: Optional[dict]) -> bool:
+    return bool(user and (user.get("auth_method") or "oidc") == "oidc")
+
+
+def _client_ip(request: Request) -> str:
+    xff = request.headers.get("x-forwarded-for", "")
+    if xff:
+        return xff.split(",")[0].strip() or "unknown"
+    return request.client.host if request.client else "unknown"
+
+
+def _is_https(request: Request) -> bool:
+    proto = request.headers.get("x-forwarded-proto", "").split(",")[0].strip().lower()
+    return proto == "https" or request.url.scheme == "https"
+
+
+_LOGIN_PW_ERRORS = {
+    "invalid": "密码错误，请重试",
+    "rate_limited": "尝试次数过多，请 5 分钟后再试",
+    "disabled": "密码登录未开启",
+}
+
+_SETTINGS_PW_ERRORS = {
+    "empty": "其他配置已保存，但开启密码登录前请先设置密码。",
+    "short": f"其他配置已保存，但密码长度至少需要 {password_auth.MIN_PASSWORD_LENGTH} 位。",
+}
 
 
 def _theme_name(theme_id: str) -> str:
@@ -44,27 +72,91 @@ def _status_badge(art) -> dict:
 # ---------- 登录 ----------
 
 @router.get("/login", response_class=HTMLResponse)
-async def login_page(request: Request):
+async def login_page(request: Request, pw_err: Optional[str] = None):
     user = current_user(request)
     if user:
         return RedirectResponse("/", status_code=303)
 
-    if not oidc.is_configured():
-        return HTMLResponse(
-            "<h1>OIDC 未配置</h1><p>请设置 OIDC_ISSUER / OIDC_CLIENT_ID / "
-            "OIDC_CLIENT_SECRET / OIDC_REDIRECT_URI / SESSION_SECRET</p>",
-            status_code=500,
-        )
+    pw_enabled = password_auth.is_enabled()
+    authorize_url = None
+    oidc_error = None
 
-    try:
-        authorize_url = await oidc.build_authorize_url()
-    except Exception as e:
-        logger.exception("生成授权地址失败")
-        return HTMLResponse(f"<h1>登录不可用</h1><p>{e}</p>", status_code=500)
+    if not oidc.is_configured():
+        if not pw_enabled:
+            return HTMLResponse(
+                "<h1>OIDC 未配置</h1><p>请设置 OIDC_ISSUER / OIDC_CLIENT_ID / "
+                "OIDC_CLIENT_SECRET / OIDC_REDIRECT_URI / SESSION_SECRET</p>",
+                status_code=500,
+            )
+        oidc_error = "Pocket ID 未配置"
+    else:
+        try:
+            authorize_url = await oidc.build_authorize_url()
+        except Exception as e:
+            logger.exception("生成授权地址失败")
+            if not pw_enabled:
+                return HTMLResponse(f"<h1>登录不可用</h1><p>{e}</p>", status_code=500)
+            oidc_error = "Pocket ID 暂时不可用，可使用密码登录"
 
     return templates.TemplateResponse(
-        "login.html", {"request": request, "authorize_url": authorize_url}
+        "login.html",
+        {
+            "request": request,
+            "authorize_url": authorize_url,
+            "oidc_error": oidc_error,
+            "password_login_enabled": pw_enabled,
+            "pw_error": _LOGIN_PW_ERRORS.get(pw_err or ""),
+        },
     )
+
+
+@router.post("/login/password")
+async def login_with_password(request: Request):
+    user = current_user(request)
+    if user:
+        return RedirectResponse("/", status_code=303)
+
+    if not oidc.has_session_secret():
+        return HTMLResponse("<h1>登录不可用</h1><p>未配置 SESSION_SECRET</p>", status_code=500)
+
+    cfg = config.load_config()
+    if not password_auth.is_enabled(cfg):
+        return RedirectResponse("/login?pw_err=disabled", status_code=303)
+
+    ip = _client_ip(request)
+    if password_auth.rate_limiter.is_blocked(ip):
+        logger.warning("密码登录触发限流: ip=%s", ip)
+        return RedirectResponse("/login?pw_err=rate_limited", status_code=303)
+
+    form = await request.form()
+    password = str(form.get("password") or "")
+    stored_hash = ((cfg.get("password_login") or {}).get("password_hash")) or ""
+
+    if not password_auth.verify_password(password, stored_hash):
+        password_auth.rate_limiter.record_failure(ip)
+        logger.warning("密码登录失败: ip=%s", ip)
+        return RedirectResponse("/login?pw_err=invalid", status_code=303)
+
+    password_auth.rate_limiter.reset(ip)
+    pw_user = {
+        "sub": "password",
+        "name": "密码登录",
+        "email": None,
+        "picture": None,
+        "auth_method": "password",
+    }
+    resp = RedirectResponse("/", status_code=303)
+    resp.set_cookie(
+        oidc.SESSION_COOKIE,
+        oidc.create_session(pw_user),
+        max_age=oidc.SESSION_TTL,
+        httponly=True,
+        samesite="lax",
+        secure=_is_https(request),
+        path="/",
+    )
+    logger.info("用户通过固定密码登录: ip=%s", ip)
+    return resp
 
 
 @router.get("/auth/callback")
@@ -91,6 +183,7 @@ async def auth_callback(
     try:
         tokens = await oidc.exchange_code(code, verifier)
         user = await oidc.fetch_userinfo(tokens["access_token"])
+        user["auth_method"] = "oidc"
     except Exception as e:
         logger.exception("OIDC 换取用户信息失败")
         return HTMLResponse(f"<h1>登录失败</h1><p>{e}</p>", status_code=400)
@@ -151,7 +244,11 @@ async def home(request: Request):
 # ---------- 设置 ----------
 
 @router.get("/settings", response_class=HTMLResponse)
-async def settings_page(request: Request, saved: Optional[str] = None):
+async def settings_page(
+    request: Request,
+    saved: Optional[str] = None,
+    pw_err: Optional[str] = None,
+):
     user = current_user(request)
     if not user:
         return RedirectResponse("/login", status_code=303)
@@ -173,6 +270,10 @@ async def settings_page(request: Request, saved: Optional[str] = None):
         "sample": sample,
         "token": token,
         "notify_configured": bool(((cfg.get("notify") or {}).get("bark") or {}).get("key")),
+        "pw_enabled": password_auth.is_enabled(cfg),
+        "pw_has_password": password_auth.has_password(cfg),
+        "can_manage_password": _is_oidc_user(user),
+        "pw_error": _SETTINGS_PW_ERRORS.get(pw_err or ""),
     })
 
 
@@ -229,8 +330,38 @@ async def save_settings(request: Request):
     if not cfg["ai_images"]["api_key"]:
         cfg["ai_images"]["api_key"] = ai_old.get("api_key", "")
 
+    # ---- 固定密码登录（仅 Pocket ID 登录的会话允许修改）----
+    pw_old = old.get("password_login") or {"enabled": False, "password_hash": ""}
+    pw_err = None
+    if _is_oidc_user(user):
+        want_enabled = form.get("pw_login_enabled") == "on"
+        new_pw = str(form.get("pw_login_password") or "")
+        pw_hash = pw_old.get("password_hash") or ""
+
+        if new_pw:
+            if len(new_pw) < password_auth.MIN_PASSWORD_LENGTH:
+                pw_err = "short"
+                cfg["password_login"] = dict(pw_old)
+            else:
+                pw_hash = password_auth.hash_password(new_pw)
+
+        if pw_err is None:
+            if want_enabled and not pw_hash:
+                pw_err = "empty"
+                cfg["password_login"] = {"enabled": False, "password_hash": ""}
+            else:
+                cfg["password_login"] = {"enabled": want_enabled, "password_hash": pw_hash}
+    else:
+        cfg["password_login"] = dict(pw_old)
+
     config.save_config(cfg)
-    logger.info("设置已保存: theme=%s", cfg["theme"])
+    logger.info(
+        "设置已保存: theme=%s, password_login=%s",
+        cfg["theme"],
+        cfg["password_login"]["enabled"],
+    )
+    if pw_err:
+        return RedirectResponse(f"/settings?saved=1&pw_err={pw_err}", status_code=303)
     return RedirectResponse("/settings?saved=1", status_code=303)
 
 

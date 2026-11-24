@@ -38,6 +38,10 @@ def is_configured() -> bool:
     return bool(ISSUER and CLIENT_ID and CLIENT_SECRET and REDIRECT_URI and SESSION_SECRET)
 
 
+def has_session_secret() -> bool:
+    return bool(SESSION_SECRET)
+
+
 async def discover() -> dict:
     """拉取并缓存 OIDC 元数据"""
     global _discovery
@@ -74,6 +78,7 @@ def create_session(user: dict) -> str:
         "name": user.get("name") or user.get("preferred_username") or user.get("email") or "用户",
         "email": user.get("email"),
         "picture": user.get("picture"),
+        "auth_method": user.get("auth_method") or "oidc",
         "exp": int(time.time()) + SESSION_TTL,
     }
     body = _b64(json.dumps(data, ensure_ascii=False).encode())
@@ -82,7 +87,7 @@ def create_session(user: dict) -> str:
 
 def read_session(value: Optional[str]) -> Optional[dict]:
     """校验并解析会话 cookie"""
-    if not value or "." not in value:
+    if not value or "." not in value or not SESSION_SECRET:
         return None
     body, sig = value.rsplit(".", 1)
     if not hmac.compare_digest(_sign(body.encode()), sig):
@@ -93,6 +98,7 @@ def read_session(value: Optional[str]) -> Optional[dict]:
         return None
     if int(data.get("exp", 0)) < time.time():
         return None
+    data.setdefault("auth_method", "oidc")
     return data
 
 
