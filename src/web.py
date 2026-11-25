@@ -7,6 +7,7 @@ Web 页面：登录、主页（文章列表）、设置
 """
 
 import logging
+import os
 from pathlib import Path
 from typing import Optional
 
@@ -14,7 +15,7 @@ from fastapi import APIRouter, Request
 from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 
-from . import article, config, imagegen, imagestyles, notify, oidc, password_auth, usage
+from . import article, config, imagegen, imagestyles, notify, notion_db, notion_webhook, oidc, password_auth, usage
 from .auth import create_preview_token
 from .html_convert import list_themes
 
@@ -42,6 +43,24 @@ def _client_ip(request: Request) -> str:
 def _is_https(request: Request) -> bool:
     proto = request.headers.get("x-forwarded-proto", "").split(",")[0].strip().lower()
     return proto == "https" or request.url.scheme == "https"
+
+
+def _human_age(seconds: int) -> str:
+    if seconds < 10:
+        return "刚刚"
+    if seconds < 60:
+        return f"{seconds} 秒前"
+    mins = seconds // 60
+    if mins < 60:
+        return f"{mins} 分钟前"
+    hours = mins // 60
+    return f"{hours} 小时前"
+
+
+def _webhook_url(request: Request) -> str:
+    proto = request.headers.get("x-forwarded-proto", "").split(",")[0].strip().lower() or request.url.scheme
+    host = request.headers.get("x-forwarded-host") or request.headers.get("host") or request.url.netloc
+    return f"{proto}://{host}/notion/webhook"
 
 
 _LOGIN_PW_ERRORS = {
@@ -403,4 +422,139 @@ async def usage_page(request: Request):
         "recent": usage.recent(50),
         "styles_used": imagestyles.recent_log(12),
         "ai_on": bool(((config.load_config().get("ai_images") or {}).get("enabled"))),
+    })
+
+
+# ---------- 数据源（Notion Database） ----------
+
+@router.get("/source", response_class=HTMLResponse)
+async def source_page(request: Request, refresh: Optional[str] = None):
+    user = current_user(request)
+    if not user:
+        return RedirectResponse("/login", status_code=303)
+
+    snap = await notion_db.get_database_snapshot(force_refresh=bool(refresh))
+    source_map = article.list_notion_source_map()
+    token = create_preview_token()["token"]
+
+    items = []
+    synced_count = 0
+    for it in snap.get("items") or []:
+        key = notion_db.normalize_id(it.get("id"))
+        local = source_map.get(key)
+        if local:
+            synced_count += 1
+        items.append({
+            **it,
+            "synced": bool(local),
+            "local_id": local["id"] if local else "",
+            "local_updated_at": (local["updated_at"][:16].replace("T", " ") if local and local.get("updated_at") else ""),
+            "preview_url": f"/preview/{local['id']}?token={token}" if local else "",
+        })
+
+    wh = notion_webhook.get_runtime_stats()
+    cache = snap.get("cache") or {}
+    age_text = _human_age(int(cache.get("age_seconds") or 0)) if cache.get("fetched_at") else "尚未同步"
+
+    return templates.TemplateResponse("source.html", {
+        "request": request,
+        "user": user,
+        "snap": snap,
+        "db": snap.get("database") or {},
+        "stats": snap.get("stats") or {},
+        "cache": cache,
+        "age_text": age_text,
+        "items": items,
+        "synced_count": synced_count,
+        "wh": wh,
+        "webhook_url": _webhook_url(request),
+    })
+
+
+@router.post("/source/refresh")
+async def source_refresh(request: Request):
+    user = current_user(request)
+    if not user:
+        return JSONResponse({"ok": False, "reason": "unauthorized"}, status_code=401)
+
+    snap = await notion_db.get_database_snapshot(force_refresh=True)
+    return JSONResponse({
+        "ok": not bool(snap.get("error")),
+        "total": (snap.get("stats") or {}).get("total", 0),
+        "fetched_at": (snap.get("cache") or {}).get("fetched_at", ""),
+        "error": snap.get("error"),
+    })
+
+
+# ---------- 流程拓扑 ----------
+
+@router.get("/flow", response_class=HTMLResponse)
+async def flow_page(request: Request):
+    user = current_user(request)
+    if not user:
+        return RedirectResponse("/login", status_code=303)
+
+    snap = await notion_db.get_database_snapshot(force_refresh=False)
+    wh = notion_webhook.get_runtime_stats()
+    cfg = config.load_config()
+    articles = article.list_articles()
+    totals = usage.totals()
+
+    ai_cfg = cfg.get("ai_images") or {}
+    notify_cfg = cfg.get("notify") or {}
+    bark_cfg = notify_cfg.get("bark") or {}
+    notify_events = notify_cfg.get("events") or {}
+
+    ai_enabled = bool(ai_cfg.get("enabled"))
+    notify_enabled = bool(notify_cfg.get("enabled") and bark_cfg.get("key"))
+    wechat_ready = bool(wh.get("wechat_configured"))
+    notion_ready = bool(snap.get("configured") and not snap.get("error"))
+    write_back_enabled = bool(ai_enabled and ai_cfg.get("write_to_notion", True))
+
+    published_count = sum(1 for a in articles if a.published_at)
+    total_articles = len(articles)
+    latest_push = (
+        (articles[0].published_at or articles[0].updated_at or "")[:16].replace("T", " ")
+        if articles else "—"
+    )
+    notion_stats = snap.get("stats") or {}
+    notion_total = int(notion_stats.get("total") or 0)
+    notion_status_counts = notion_stats.get("status_counts") or {}
+    notion_failed = int(notion_status_counts.get("发布失败") or 0)
+    notion_published = int(notion_status_counts.get("已发布") or 0)
+    sync_pct = round(min(100.0, (total_articles * 100.0 / notion_total)), 1) if notion_total else 0.0
+
+    downstream_ready = sum([
+        1 if wechat_ready else 0,
+        1 if notion_ready else 0,
+        1 if ai_enabled else 0,
+        1 if notify_enabled else 0,
+        1,  # 本地发布台与预览始终可用
+    ])
+
+    return templates.TemplateResponse("flow.html", {
+        "request": request,
+        "user": user,
+        "snap": snap,
+        "db": snap.get("database") or {},
+        "wh": wh,
+        "webhook_url": _webhook_url(request),
+        "theme_name": _theme_name(cfg.get("theme") or "default"),
+        "ai_cfg": ai_cfg,
+        "ai_enabled": ai_enabled,
+        "write_back_enabled": write_back_enabled,
+        "notify_enabled": notify_enabled,
+        "notify_events": notify_events,
+        "wechat_ready": wechat_ready,
+        "notion_ready": notion_ready,
+        "auth_token_on": bool(os.getenv("AUTH_TOKEN")),
+        "total_articles": total_articles,
+        "published_count": published_count,
+        "latest_push": latest_push,
+        "notion_total": notion_total,
+        "notion_published": notion_published,
+        "notion_failed": notion_failed,
+        "sync_pct": sync_pct,
+        "totals": totals,
+        "downstream_ready": downstream_ready,
     })

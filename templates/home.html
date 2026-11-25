@@ -72,6 +72,14 @@ h1{margin:0;font-size:22px;font-weight:600;letter-spacing:-.2px}
         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
         文章
       </a>
+      <a href="/source">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M3 5v14a9 3 0 0 0 18 0V5"/><path d="M3 12a9 3 0 0 0 18 0"/></svg>
+        数据源
+      </a>
+      <a href="/flow">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="5" cy="6" r="2"/><circle cx="19" cy="6" r="2"/><circle cx="19" cy="18" r="2"/><circle cx="5" cy="18" r="2"/><path d="M7 6h10M7 18h10M5 8v8M19 8v8"/></svg>
+        流程
+      </a>
       <a href="/usage">
         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 3v18h18"/><path d="M18 17V9"/><path d="M13 17V5"/><path d="M8 17v-3"/></svg>
         用量
@@ -113,7 +121,7 @@ h1{margin:0;font-size:22px;font-weight:600;letter-spacing:-.2px}
     <div class="stat"><div class="k">已推送</div><div class="v">{{ total }}</div><div class="s">篇</div></div>
     <div class="stat"><div class="k">最近一次</div><div class="v">{{ latest[:10] if latest and latest != '—' else '—' }}</div><div class="s">推送时间</div></div>
     <div class="stat"><div class="k">当前主题</div><div class="v">{{ theme_name }}</div><div class="s">可在设置里改</div></div>
-    <div class="stat"><div class="k">登录身份</div><div class="v" style="font-size:15px;line-height:1.4">{{ user.email or user.name }}</div><div class="s">Pocket ID</div></div>
+    <div class="stat"><div class="k">登录身份</div><div class="v" style="font-size:15px;line-height:1.4">{{ user.email or user.name }}</div><div class="s">{{ '固定密码' if user.auth_method == 'password' else 'Pocket ID' }}</div></div>
   </div>
 
   <div class="table">

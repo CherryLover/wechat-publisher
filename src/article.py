@@ -217,3 +217,25 @@ def upsert_from_source(title: str, content: str, html_content: str,
         return new_id
     finally:
         conn.close()
+
+
+def list_notion_source_map() -> dict[str, dict]:
+    """返回 {normalized_source_id: {id, updated_at, published_at}} 映射"""
+    init_db()
+    init_source_columns()
+    conn = sqlite3.connect(DB_PATH)
+    try:
+        rows = conn.execute(
+            "SELECT id, source_id, updated_at, published_at FROM articles WHERE source = 'notion' AND source_id IS NOT NULL"
+        ).fetchall()
+    finally:
+        conn.close()
+    mapping: dict[str, dict] = {}
+    for art_id, src_id, updated_at, published_at in rows:
+        key = str(src_id).replace("-", "").lower()
+        mapping[key] = {
+            "id": art_id,
+            "updated_at": updated_at or "",
+            "published_at": published_at or "",
+        }
+    return mapping

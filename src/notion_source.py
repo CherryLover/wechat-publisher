@@ -56,6 +56,33 @@ class NotionSource:
     async def get_page(self, page_id: str) -> dict:
         return await self._request("GET", f"/pages/{page_id}")
 
+    async def get_database(self, database_id: str) -> dict:
+        return await self._request("GET", f"/databases/{database_id}")
+
+    async def query_database(
+        self,
+        database_id: str,
+        *,
+        sorts: Optional[list[dict]] = None,
+        page_size: int = 100,
+        max_pages: int = 5,
+    ) -> tuple[list[dict], bool]:
+        """分页查询数据库条目，返回 (results, has_more_truncated)"""
+        results: list[dict] = []
+        cursor: Optional[str] = None
+        for _ in range(max_pages):
+            payload: dict[str, Any] = {"page_size": page_size}
+            if sorts:
+                payload["sorts"] = sorts
+            if cursor:
+                payload["start_cursor"] = cursor
+            data = await self._request("POST", f"/databases/{database_id}/query", payload)
+            results.extend(data.get("results", []))
+            if not data.get("has_more"):
+                return results, False
+            cursor = data.get("next_cursor")
+        return results, True
+
     async def get_children(self, block_id: str) -> list[dict]:
         """取某个块/页面下的全部子块（自动翻页）"""
         results, cursor = [], None

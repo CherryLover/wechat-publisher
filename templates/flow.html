@@ -1,0 +1,453 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>流程拓扑 · 发布台</title>
+<style>
+*{box-sizing:border-box}
+body{margin:0;background:#f8fafb;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif;-webkit-font-smoothing:antialiased;color:#09090b}
+a{color:inherit;text-decoration:none}
+.top{background:#fff;border-bottom:1px solid #e4e4e7}
+.top-inner{max-width:1280px;margin:0 auto;padding:0 24px;height:56px;display:flex;align-items:center;gap:28px}
+.brand{display:flex;align-items:center;gap:9px}
+.mark{width:28px;height:28px;border-radius:7px;background:#07c160;display:flex;align-items:center;justify-content:center}
+.brand-name{font-size:14px;font-weight:600}
+nav{display:flex;align-items:center;gap:4px}
+nav a{display:inline-flex;align-items:center;gap:7px;height:32px;padding:0 11px;border-radius:7px;font-size:13px;font-weight:500;color:#71717a}
+nav a.active{background:#f4f4f5;color:#09090b}
+.top-right{margin-left:auto;display:flex;align-items:center;gap:10px}
+.user{display:flex;align-items:center;gap:8px;padding-left:10px;border-left:1px solid #e4e4e7;font-size:13px;color:#3f3f46}
+.avatar{width:26px;height:26px;border-radius:50%;background:#e4e4e7;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:600;color:#52525b;overflow:hidden}
+.avatar img{width:100%;height:100%;object-fit:cover}
+
+main{max-width:1280px;margin:0 auto;padding:18px 24px 44px}
+
+/* 顶部紧凑实时指标条（仿参考图顶栏） */
+.metric-bar{display:flex;align-items:center;gap:18px;flex-wrap:wrap;font-size:12px;color:#71717a;margin-bottom:18px;padding:0 2px}
+.metric-bar b{color:#09090b;font-weight:600;font-variant-numeric:tabular-nums;margin-left:3px}
+.metric-bar .ok{color:#059669}
+.metric-bar .right{margin-left:auto;display:flex;align-items:center;gap:10px}
+.mini-link{font-size:12px;color:#059669;font-weight:500}
+.mini-link:hover{text-decoration:underline}
+
+/* 三栏拓扑画布 + SVG 曲线层 */
+.topo-stage{position:relative;display:grid;grid-template-columns:280px minmax(360px,430px) 340px;justify-content:space-between;align-items:start;gap:40px;padding:6px 0}
+.topo-svg{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-index:1;overflow:visible}
+.col{position:relative;z-index:2;display:flex;flex-direction:column;gap:12px}
+.col-label{font-size:11px;font-weight:500;color:#94a3b8;letter-spacing:.3px;margin:0 0 2px 2px}
+
+/* 左右节点卡片 */
+.node-card{background:#fff;border:1px solid #e5e7eb;border-radius:12px;padding:14px 15px;box-shadow:0 1px 2px rgba(15,23,42,.03);transition:border-color .15s,box-shadow .15s}
+.node-card:hover{border-color:#cbd5e1;box-shadow:0 4px 12px rgba(15,23,42,.05)}
+.node-card.muted{background:#fcfcfd;color:#71717a}
+.node-top{display:flex;align-items:center;gap:8px}
+.dot{width:8px;height:8px;border-radius:50%;flex:none}
+.dot.on{background:#10b981;box-shadow:0 0 0 3px rgba(16,185,129,.16)}
+.dot.warn{background:#f59e0b;box-shadow:0 0 0 3px rgba(245,158,11,.16)}
+.dot.off{background:#cbd5e1}
+.node-title{font-size:13px;font-weight:600;color:#0f172a;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.node-tag{font-size:11px;color:#94a3b8;font-weight:400}
+.node-right{margin-left:auto;font-size:12px;font-weight:500;color:#059669;white-space:nowrap;font-variant-numeric:tabular-nums}
+.node-right.dim{color:#64748b;font-weight:400}
+.node-right.warn{color:#d97706}
+.node-sub{margin-top:6px;font-size:12px;color:#64748b;line-height:1.5}
+.node-meta{margin-top:10px;display:flex;flex-direction:column;gap:6px}
+.prog-row{display:grid;grid-template-columns:46px minmax(0,1fr) auto;gap:8px;align-items:center;font-size:11px;color:#94a3b8}
+.prog-track{height:5px;border-radius:999px;background:#f1f5f9;overflow:hidden}
+.prog-fill{height:100%;border-radius:999px;background:#10b981}
+.prog-fill.amber{background:#f59e0b}
+.prog-fill.gray{background:#cbd5e1}
+.mono-sm{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:11px;color:#475569;background:#f1f5f9;padding:1px 5px;border-radius:4px}
+
+/* 中央核心引擎卡片（浅青绿边框光晕，复刻参考图） */
+.hub-card{background:#fff;border:1.5px solid #6ee7b7;border-radius:16px;padding:20px 22px 18px;box-shadow:0 0 0 4px rgba(16,185,129,.07),0 10px 30px rgba(15,23,42,.05)}
+.hub-head{display:flex;align-items:center;gap:12px;padding-bottom:16px;border-bottom:1px solid #f1f5f9;margin-bottom:16px}
+.hub-icon{width:38px;height:38px;border-radius:11px;background:#10b981;display:flex;align-items:center;justify-content:center;flex:none;box-shadow:0 4px 12px rgba(16,185,129,.25)}
+.hub-title{font-size:15px;font-weight:600;color:#0f172a}
+.hub-sub{font-size:12px;color:#64748b;margin-top:2px}
+.hub-pill{margin-left:auto;font-size:11px;font-weight:500;color:#047857;background:#ecfdf5;border:1px solid #a7f3d0;padding:4px 10px;border-radius:999px;white-space:nowrap}
+
+/* 垂直步骤流水线 */
+.steps{position:relative;display:flex;flex-direction:column;gap:14px;padding-left:22px}
+.steps::before{content:"";position:absolute;left:5px;top:8px;bottom:8px;width:1.5px;background:#e2e8f0}
+.step{position:relative}
+.step-dot{position:absolute;left:-22px;top:4px;width:11px;height:11px;border-radius:50%;background:#fff;border:2px solid #cbd5e1}
+.step.on .step-dot{border-color:#10b981;background:#ecfdf5}
+.step.opt .step-dot{border-color:#cbd5e1;background:#f8fafc}
+.step-h{display:flex;align-items:center;gap:8px;font-size:13px;font-weight:600;color:#0f172a}
+.step-badge{font-size:10px;font-weight:500;padding:1px 6px;border-radius:999px;background:#f0fdf4;color:#15803d;border:1px solid #bbf7d0}
+.step-badge.off{background:#f8fafc;color:#94a3b8;border-color:#e2e8f0}
+.step-d{margin-top:2px;font-size:12px;color:#64748b;line-height:1.45}
+
+/* 中央卡片底部三格统计 */
+.hub-foot{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:18px;padding-top:14px;border-top:1px solid #f1f5f9}
+.fbox{border-radius:9px;padding:9px 11px}
+.fbox.gray{background:#f8fafc;border:1px solid #f1f5f9}
+.fbox.amber{background:#fefce8;border:1px solid #fef08a}
+.fbox.red{background:#fff1f2;border:1px solid #ffe4e6}
+.fbox .fk{font-size:11px;color:#64748b}
+.fbox.amber .fk{color:#a16207}
+.fbox.red .fk{color:#be123c}
+.fbox .fv{font-size:13px;font-weight:600;color:#0f172a;margin-top:3px;font-variant-numeric:tabular-nums}
+.hub-note{margin:10px 0 0;font-size:11px;color:#94a3b8}
+
+/* 虚线流动动画 */
+@keyframes flowDash {
+  to { stroke-dashoffset: -18; }
+}
+.edge-active{stroke:#10b981;stroke-width:1.6;fill:none;stroke-dasharray:4 5;animation:flowDash 1.4s linear infinite}
+.edge-idle{stroke:#cbd5e1;stroke-width:1.3;fill:none;stroke-dasharray:3 4}
+.port-dot{fill:#10b981}
+.port-dot.idle{fill:#cbd5e1}
+
+@media (max-width:1080px){
+  .topo-stage{grid-template-columns:1fr;gap:20px}
+  .topo-svg{display:none}
+  .top-inner{gap:12px;padding:0 14px}
+  .brand-name{display:none}
+}
+</style>
+</head>
+<body>
+
+<div class="top">
+  <div class="top-inner">
+    <div class="brand">
+      <span class="mark">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m22 2-7 20-4-9-9-4Z"/><path d="M22 2 11 13"/></svg>
+      </span>
+      <span class="brand-name">程序杂念 · 发布台</span>
+    </div>
+    <nav>
+      <a href="/">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+        文章
+      </a>
+      <a href="/source">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M3 5v14a9 3 0 0 0 18 0V5"/><path d="M3 12a9 3 0 0 0 18 0"/></svg>
+        数据源
+      </a>
+      <a class="active" href="/flow">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="5" cy="6" r="2"/><circle cx="19" cy="6" r="2"/><circle cx="19" cy="18" r="2"/><circle cx="5" cy="18" r="2"/><path d="M7 6h10M7 18h10M5 8v8M19 8v8"/></svg>
+        流程
+      </a>
+      <a href="/usage">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 3v18h18"/><path d="M18 17V9"/><path d="M13 17V5"/><path d="M8 17v-3"/></svg>
+        用量
+      </a>
+      <a href="/settings">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+        设置
+      </a>
+    </nav>
+    <div class="top-right">
+      <div class="user">
+        <span class="avatar">{% if user.picture %}<img src="{{ user.picture }}" alt="">{% else %}{{ (user.name or '?')[:1] }}{% endif %}</span>
+        <span>{{ user.name }}</span>
+        <a href="/logout" title="退出登录" aria-label="退出登录" style="display:inline-flex;color:#a1a1aa">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+        </a>
+      </div>
+    </div>
+  </div>
+</div>
+
+<main>
+  <div class="metric-bar">
+    <span>正在发布<b>{{ wh.inflight_count }}</b></span>
+    <span>Notion 源<b>{{ notion_total }}</b> 篇</span>
+    <span>本地归档<b>{{ total_articles }}</b> 篇</span>
+    <span>AI 生图<b>{{ totals.images }}</b> 张</span>
+    <span>Webhook 接收<b>{{ wh.received }}</b> 次</span>
+    <span>下游就绪<b class="ok">{{ downstream_ready }}</b> / 5</span>
+    <span class="right">
+      <a class="mini-link" href="/source">查看数据源详情 →</a>
+    </span>
+  </div>
+
+  <div class="topo-stage" id="topo-stage">
+    <svg class="topo-svg" id="topo-svg" aria-hidden="true"></svg>
+
+    <!-- 左栏：触发与数据来源 -->
+    <div class="col" id="col-left">
+      <div class="col-label">内容与触发来源</div>
+
+      <a class="node-card" href="/source" data-side="left" data-active="{{ '1' if notion_ready else '0' }}">
+        <div class="node-top">
+          <span class="dot {{ 'on' if notion_ready else 'warn' }}"></span>
+          <span class="node-title">{{ db.title or 'Notion Database' }}</span>
+          <span class="node-right">{{ notion_total }} 篇</span>
+        </div>
+        <div class="node-sub">文章内容唯一来源，状态改为「{{ wh.trigger_status }}」即进入流水线</div>
+        <div class="node-meta">
+          <div class="prog-row">
+            <span>已同步</span>
+            <div class="prog-track"><div class="prog-fill" style="width:{{ sync_pct }}%"></div></div>
+            <span>{{ sync_pct }}%</span>
+          </div>
+        </div>
+      </a>
+
+      <div class="node-card" data-side="left" data-active="{{ '1' if wh.webhook_secret_configured else '0' }}">
+        <div class="node-top">
+          <span class="dot {{ 'on' if wh.webhook_secret_configured else 'warn' }}"></span>
+          <span class="node-title">Notion Webhook</span>
+          <span class="node-right {{ '' if wh.webhook_secret_configured else 'warn' }}">
+            {{ '已验签' if wh.webhook_secret_configured else '未配密钥' }}
+          </span>
+        </div>
+        <div class="node-sub">
+          <span class="mono-sm">/notion/webhook</span><br>
+          兼容集成订阅与 Database Automation；本次接收 {{ wh.received }} 次，触发 {{ wh.accepted }} 次
+        </div>
+      </div>
+
+      <div class="node-card muted" data-side="left" data-active="{{ '1' if auth_token_on else '0' }}">
+        <div class="node-top">
+          <span class="dot {{ 'on' if auth_token_on else 'off' }}"></span>
+          <span class="node-title">MCP / REST API</span>
+          <span class="node-right dim">{{ 'Bearer 保护' if auth_token_on else '开放模式' }}</span>
+        </div>
+        <div class="node-sub">支持外部 Agent / CLI 直接创建文章、预览排版并推送到草稿箱</div>
+      </div>
+    </div>
+
+    <!-- 中栏：核心发布引擎 -->
+    <div class="col" id="col-mid">
+      <div class="col-label" style="visibility:hidden">引擎</div>
+      <section class="hub-card" id="hub-card">
+        <div class="hub-head">
+          <span class="hub-icon">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m22 2-7 20-4-9-9-4Z"/><path d="M22 2 11 13"/></svg>
+          </span>
+          <div>
+            <div class="hub-title">发布引擎</div>
+            <div class="hub-sub">每篇文章从上到下依次过一遍这些关卡</div>
+          </div>
+          <span class="hub-pill">{{ ('发布中 ' ~ wh.inflight_count) if wh.inflight_count else '自动流水线' }}</span>
+        </div>
+
+        <div class="steps">
+          <div class="step {{ 'on' if wh.webhook_secret_configured else 'opt' }}">
+            <span class="step-dot"></span>
+            <div class="step-h">
+              验签与事件去重
+              <span class="step-badge {{ '' if wh.webhook_secret_configured else 'off' }}">{{ 'HMAC 已开启' if wh.webhook_secret_configured else '跳过验签' }}</span>
+            </div>
+            <div class="step-d">校验 X-Notion-Signature，拦截重试重复事件与非「{{ wh.trigger_status }}」状态</div>
+          </div>
+
+          <div class="step {{ 'on' if notion_ready else 'opt' }}">
+            <span class="step-dot"></span>
+            <div class="step-h">
+              拉取 Notion 页面与块树
+              <span class="step-badge {{ '' if notion_ready else 'off' }}">{{ '已关联' if notion_ready else '未关联' }}</span>
+            </div>
+            <div class="step-d">递归读取标题、段落、代码块、嵌套列表与表格，清洗成标准 Markdown</div>
+          </div>
+
+          <div class="step {{ 'on' if ai_enabled else 'opt' }}">
+            <span class="step-dot"></span>
+            <div class="step-h">
+              AI 配图规划与生图
+              <span class="step-badge {{ '' if ai_enabled else 'off' }}">
+                {% if ai_enabled %}{{ '自由风格' if ai_cfg.style_mode != 'fixed' else '固定风格' }}{% else %}已关闭{% endif %}
+              </span>
+            </div>
+            <div class="step-d">文生文读文章出 4 条提示词，生成 1 张封面 + 3 张插图并按小节插入正文</div>
+          </div>
+
+          <div class="step {{ 'on' if wechat_ready else 'opt' }}">
+            <span class="step-dot"></span>
+            <div class="step-h">
+              图片转存微信图床
+            </div>
+            <div class="step-d">下载 Notion S3 / 外链 / AI 图片，逐张上传微信素材接口替换图片地址</div>
+          </div>
+
+          <div class="step on">
+            <span class="step-dot"></span>
+            <div class="step-h">
+              公众号主题排版
+              <span class="step-badge">{{ theme_name }}</span>
+            </div>
+            <div class="step-d">Markdown 转微信兼容内联样式 HTML，自动修正列表、代码与表格渲染</div>
+          </div>
+
+          <div class="step {{ 'on' if wechat_ready else 'opt' }}">
+            <span class="step-dot"></span>
+            <div class="step-h">
+              创建公众号草稿
+              <span class="step-badge {{ '' if wechat_ready else 'off' }}">{{ '已就绪' if wechat_ready else '未配置' }}</span>
+            </div>
+            <div class="step-d">上传封面缩略图，调用微信草稿箱 API 落库，等待后台一键群发</div>
+          </div>
+
+          <div class="step on">
+            <span class="step-dot"></span>
+            <div class="step-h">
+              归档、回写与通知
+            </div>
+            <div class="step-d">写入本地发布台供预览，回写 Notion「已发布」状态与配图，触发 Bark 推送</div>
+          </div>
+        </div>
+
+        <div class="hub-foot">
+          <div class="fbox gray">
+            <div class="fk">本地归档</div>
+            <div class="fv">共 {{ total_articles }} · 已推 {{ published_count }}</div>
+          </div>
+          <div class="fbox amber">
+            <div class="fk">AI 配图</div>
+            <div class="fv">{{ totals.calls }} 次 · {{ totals.images }} 张</div>
+          </div>
+          <div class="fbox red">
+            <div class="fk">异常记录</div>
+            <div class="fv">AI {{ totals.errors }} · 源 {{ notion_failed }}</div>
+          </div>
+        </div>
+        <p class="hub-note">最近一次推送：{{ latest_push }} · 配置改完在设置页立即生效</p>
+      </section>
+    </div>
+
+    <!-- 右栏：下游目标与外部服务 -->
+    <div class="col" id="col-right">
+      <div class="col-label">下游去向与外部服务</div>
+
+      <div class="node-card" data-side="right" data-active="{{ '1' if wechat_ready else '0' }}">
+        <div class="node-top">
+          <span class="dot {{ 'on' if wechat_ready else 'off' }}"></span>
+          <span class="node-title">微信公众号草稿箱</span>
+          <span class="node-tag">mp.weixin</span>
+          <span class="node-right {{ '' if wechat_ready else 'dim' }}">{{ '正常' if wechat_ready else '未配置' }}</span>
+        </div>
+        <div class="node-meta">
+          <div class="prog-row">
+            <span>已发布</span>
+            <div class="prog-track"><div class="prog-fill" style="width:{{ sync_pct }}%"></div></div>
+            <span>{{ notion_published }}/{{ notion_total }}</span>
+          </div>
+        </div>
+        <div class="node-sub">最近推送：{{ latest_push }}</div>
+      </div>
+
+      <div class="node-card" data-side="right" data-active="{{ '1' if notion_ready else '0' }}">
+        <div class="node-top">
+          <span class="dot {{ 'on' if notion_ready else 'off' }}"></span>
+          <span class="node-title">Notion 状态与配图回写</span>
+          <span class="node-right {{ '' if notion_ready else 'dim' }}">{{ '已开启' if write_back_enabled else '仅状态' }}</span>
+        </div>
+        <div class="node-sub">
+          发布完成后自动把状态改为「已发布」{% if write_back_enabled %}，并回写 AI 封面与插图块{% endif %}
+        </div>
+      </div>
+
+      <a class="node-card {{ '' if ai_enabled else 'muted' }}" href="/usage" data-side="right" data-active="{{ '1' if ai_enabled else '0' }}">
+        <div class="node-top">
+          <span class="dot {{ 'on' if ai_enabled else 'off' }}"></span>
+          <span class="node-title">AI 配图模型服务</span>
+          <span class="node-tag">{{ ai_cfg.image_api or 'auto' }}</span>
+          <span class="node-right {{ '' if ai_enabled else 'dim' }}">{{ '已启用' if ai_enabled else '已关闭' }}</span>
+        </div>
+        <div class="node-sub">
+          {% if ai_enabled %}
+          文生文 <span class="mono-sm">{{ ai_cfg.text_model or '未设' }}</span> · 生图 <span class="mono-sm">{{ ai_cfg.image_model or '未设' }}</span><br>
+          累计 {{ "{:,}".format(totals.total_tokens) }} tokens · 出图 {{ totals.images }} 张
+          {% else %}
+          当前关闭，发布时直接按无图/原文图片走排版
+          {% endif %}
+        </div>
+      </a>
+
+      <a class="node-card {{ '' if notify_enabled else 'muted' }}" href="/settings" data-side="right" data-active="{{ '1' if notify_enabled else '0' }}">
+        <div class="node-top">
+          <span class="dot {{ 'on' if notify_enabled else 'off' }}"></span>
+          <span class="node-title">Bark 推送通知</span>
+          <span class="node-tag">iOS</span>
+          <span class="node-right {{ '' if notify_enabled else 'dim' }}">{{ '已启用' if notify_enabled else '未启用' }}</span>
+        </div>
+        <div class="node-sub">
+          {% if notify_enabled %}
+          已订阅：{% if notify_events.start %}开始 {% endif %}{% if notify_events.success %}成功 {% endif %}{% if notify_events.error %}失败{% endif %}
+          {% else %}
+          未开启，可在设置页配置 Bark 设备 Key
+          {% endif %}
+        </div>
+      </a>
+
+      <a class="node-card" href="/" data-side="right" data-active="1">
+        <div class="node-top">
+          <span class="dot on"></span>
+          <span class="node-title">本地发布台与预览</span>
+          <span class="node-tag">SQLite</span>
+          <span class="node-right">{{ total_articles }} 篇</span>
+        </div>
+        <div class="node-sub">归档 Markdown 与渲染 HTML，签发 8 小时临时预览链接随时查验排版</div>
+      </a>
+    </div>
+  </div>
+</main>
+
+<script>
+(function () {
+  var stage = document.getElementById('topo-stage');
+  var svg = document.getElementById('topo-svg');
+  var hub = document.getElementById('hub-card');
+  if (!stage || !svg || !hub) return;
+
+  function drawEdges() {
+    if (window.innerWidth <= 1080) {
+      svg.innerHTML = '';
+      return;
+    }
+    var sr = stage.getBoundingClientRect();
+    var hr = hub.getBoundingClientRect();
+    var hubLeftX = hr.left - sr.left;
+    var hubRightX = hr.right - sr.left;
+    var hubMidY = (hr.top - sr.top) + hr.height * 0.5;
+
+    svg.setAttribute('viewBox', '0 0 ' + sr.width + ' ' + sr.height);
+    var parts = [];
+
+    var leftNodes = stage.querySelectorAll('[data-side="left"]');
+    leftNodes.forEach(function (el) {
+      var r = el.getBoundingClientRect();
+      var x1 = r.right - sr.left;
+      var y1 = (r.top - sr.top) + r.height * 0.5;
+      var x2 = hubLeftX;
+      var y2 = hubMidY;
+      var dx = (x2 - x1) * 0.55;
+      var active = el.dataset.active === '1';
+      var cls = active ? 'edge-active' : 'edge-idle';
+      parts.push('<path class="' + cls + '" d="M ' + x1 + ' ' + y1 + ' C ' + (x1 + dx) + ' ' + y1 + ', ' + (x2 - dx) + ' ' + y2 + ', ' + x2 + ' ' + y2 + '" />');
+    });
+
+    var rightNodes = stage.querySelectorAll('[data-side="right"]');
+    rightNodes.forEach(function (el) {
+      var r = el.getBoundingClientRect();
+      var x1 = hubRightX;
+      var y1 = hubMidY;
+      var x2 = r.left - sr.left;
+      var y2 = (r.top - sr.top) + r.height * 0.5;
+      var dx = (x2 - x1) * 0.55;
+      var active = el.dataset.active === '1';
+      var cls = active ? 'edge-active' : 'edge-idle';
+      parts.push('<path class="' + cls + '" d="M ' + x1 + ' ' + y1 + ' C ' + (x1 + dx) + ' ' + y1 + ', ' + (x2 - dx) + ' ' + y2 + ', ' + x2 + ' ' + y2 + '" />');
+    });
+
+    // 中央左右汇合锚点圆点
+    parts.push('<circle class="port-dot" cx="' + hubLeftX + '" cy="' + hubMidY + '" r="3.5" />');
+    parts.push('<circle class="port-dot" cx="' + hubRightX + '" cy="' + hubMidY + '" r="3.5" />');
+
+    svg.innerHTML = parts.join('');
+  }
+
+  window.addEventListener('resize', drawEdges);
+  window.addEventListener('load', drawEdges);
+  drawEdges();
+  setTimeout(drawEdges, 120);
+})();
+</script>
+</body>
+</html>

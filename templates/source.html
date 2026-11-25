@@ -1,0 +1,403 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>数据源 · 发布台</title>
+<style>
+*{box-sizing:border-box}
+body{margin:0;background:#fafafa;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif;-webkit-font-smoothing:antialiased;color:#09090b}
+a{color:inherit;text-decoration:none}
+.top{background:#fff;border-bottom:1px solid #e4e4e7}
+.top-inner{max-width:1200px;margin:0 auto;padding:0 24px;height:56px;display:flex;align-items:center;gap:28px}
+.brand{display:flex;align-items:center;gap:9px}
+.mark{width:28px;height:28px;border-radius:7px;background:#07c160;display:flex;align-items:center;justify-content:center}
+.brand-name{font-size:14px;font-weight:600}
+nav{display:flex;align-items:center;gap:4px}
+nav a{display:inline-flex;align-items:center;gap:7px;height:32px;padding:0 11px;border-radius:7px;font-size:13px;font-weight:500;color:#71717a}
+nav a.active{background:#f4f4f5;color:#09090b}
+.top-right{margin-left:auto;display:flex;align-items:center;gap:10px}
+.user{display:flex;align-items:center;gap:8px;padding-left:10px;border-left:1px solid #e4e4e7;font-size:13px;color:#3f3f46}
+.avatar{width:26px;height:26px;border-radius:50%;background:#e4e4e7;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:600;color:#52525b;overflow:hidden}
+.avatar img{width:100%;height:100%;object-fit:cover}
+main{max-width:1200px;margin:0 auto;padding:28px 24px 44px}
+.page-head{display:flex;align-items:flex-end;justify-content:space-between;margin-bottom:20px;gap:16px;flex-wrap:wrap}
+h1{margin:0;font-size:22px;font-weight:600;letter-spacing:-.2px}
+.sub{margin:5px 0 0;font-size:13px;color:#71717a;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.btn{display:inline-flex;align-items:center;gap:6px;height:34px;padding:0 13px;border:1px solid #e4e4e7;border-radius:7px;background:#fff;font-size:13px;font-weight:500;color:#09090b;font-family:inherit;cursor:pointer}
+.btn:hover{background:#f4f4f5}
+.btn:disabled{opacity:.6;cursor:wait}
+.btn-primary{background:#07c160;border:none;color:#fff}
+.btn-primary:hover{background:#06a852}
+.tip{background:#fffbeb;border:1px solid #fde68a;color:#92400e;font-size:13px;padding:10px 14px;border-radius:8px;margin-bottom:16px}
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:18px}
+.stat{background:#fff;border:1px solid #e4e4e7;border-radius:9px;padding:14px 16px}
+.stat .k{font-size:12px;color:#71717a;margin-bottom:6px}
+.stat .v{font-size:22px;font-weight:600;line-height:1.15;font-variant-numeric:tabular-nums}
+.stat .s{font-size:11px;color:#a1a1aa;margin-top:5px}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px}
+.card{background:#fff;border:1px solid #e4e4e7;border-radius:9px;margin-bottom:16px;overflow:hidden}
+.two .card{margin-bottom:0}
+.card-head{padding:13px 16px;border-bottom:1px solid #f4f4f5;display:flex;align-items:center;gap:8px}
+.card-head h2{margin:0;font-size:13px;font-weight:600}
+.card-head .n{margin-left:auto;font-size:12px;color:#a1a1aa}
+.card-body{padding:14px 16px}
+.kv{display:grid;grid-template-columns:96px minmax(0,1fr);gap:8px 12px;font-size:13px;align-items:center}
+.kv .k{color:#71717a;font-size:12px}
+.kv .v{color:#09090b;word-break:break-all}
+.mono{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12px;color:#3f3f46;background:#f4f4f5;padding:2px 6px;border-radius:5px}
+.badge{display:inline-flex;align-items:center;gap:5px;border:1px solid #d5f2e3;background:#f0fdf5;color:#0b7a44;font-size:11px;font-weight:500;padding:2px 8px;border-radius:999px;white-space:nowrap}
+.badge.gray{border-color:#e4e4e7;background:#fafafa;color:#52525b}
+.badge.amber{border-color:#fde68a;background:#fffbeb;color:#92400e}
+.badge.red{border-color:#fecdd3;background:#fff1f2;color:#be123c}
+.badge.blue{border-color:#bfdbfe;background:#eff6ff;color:#1d4ed8}
+.dot{width:7px;height:7px;border-radius:50%;background:#07c160;display:inline-block}
+.dot.amber{background:#f59e0b}
+.dot.gray{background:#a1a1aa}
+.bars{display:flex;flex-direction:column;gap:8px;margin-top:14px;padding-top:12px;border-top:1px solid #f4f4f5}
+.bar-row{display:grid;grid-template-columns:84px minmax(0,1fr) 74px;gap:10px;align-items:center;font-size:12px}
+.bar-track{height:6px;border-radius:999px;background:#f4f4f5;overflow:hidden}
+.bar-fill{height:100%;border-radius:999px;background:#07c160}
+.bar-fill.amber{background:#f59e0b}
+.bar-fill.red{background:#ef4444}
+.bar-fill.gray{background:#a1a1aa}
+.chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:12px;padding-top:12px;border-top:1px solid #f4f4f5}
+.chip{font-size:11px;color:#52525b;background:#fafafa;border:1px solid #e4e4e7;border-radius:6px;padding:2px 7px}
+.chip b{font-weight:500;color:#09090b}
+.toolbar{padding:12px 16px;border-bottom:1px solid #f4f4f5;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.search{height:32px;padding:0 11px;border:1px solid #e4e4e7;border-radius:6px;font-size:13px;width:240px;max-width:100%;font-family:inherit}
+.search:focus{outline:none;border-color:#07c160}
+.filters{display:flex;gap:6px;flex-wrap:wrap}
+.pill{height:28px;padding:0 10px;border:1px solid #e4e4e7;border-radius:999px;background:#fff;font-size:12px;color:#52525b;cursor:pointer;font-family:inherit}
+.pill.active{border-color:#07c160;background:#f0fdf5;color:#0b7a44;font-weight:500}
+table{width:100%;border-collapse:collapse}
+th{text-align:left;font-size:12px;font-weight:500;color:#71717a;background:#fafafa;padding:9px 16px;border-bottom:1px solid #e4e4e7;white-space:nowrap}
+td{font-size:13px;padding:10px 16px;border-bottom:1px solid #f4f4f5;vertical-align:middle}
+tr:last-child td{border-bottom:none}
+tr:hover td{background:#fafafa}
+.dim{color:#71717a;font-size:12px;white-space:nowrap}
+.title-cell{max-width:440px}
+.title-cell a:hover{color:#07c160}
+.empty{padding:44px 16px;text-align:center;color:#a1a1aa;font-size:13px}
+.scroll{max-height:560px;overflow:auto}
+.link-green{color:#0b7a44;font-size:12px;font-weight:500}
+.link-green:hover{text-decoration:underline}
+.wh-mini{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:12px;padding-top:12px;border-top:1px solid #f4f4f5}
+.wh-box{background:#fafafa;border:1px solid #f4f4f5;border-radius:7px;padding:8px 10px}
+.wh-box .k{font-size:11px;color:#71717a}
+.wh-box .v{font-size:15px;font-weight:600;margin-top:2px;font-variant-numeric:tabular-nums}
+@media (max-width:900px){
+  .stats{grid-template-columns:repeat(2,1fr)}
+  .two{grid-template-columns:1fr}
+  .top-inner{gap:12px;padding:0 14px}
+  .brand-name{display:none}
+  .hide-sm{display:none}
+}
+</style>
+</head>
+<body>
+
+<div class="top">
+  <div class="top-inner">
+    <div class="brand">
+      <span class="mark">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m22 2-7 20-4-9-9-4Z"/><path d="M22 2 11 13"/></svg>
+      </span>
+      <span class="brand-name">程序杂念 · 发布台</span>
+    </div>
+    <nav>
+      <a href="/">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+        文章
+      </a>
+      <a class="active" href="/source">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M3 5v14a9 3 0 0 0 18 0V5"/><path d="M3 12a9 3 0 0 0 18 0"/></svg>
+        数据源
+      </a>
+      <a href="/flow">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="5" cy="6" r="2"/><circle cx="19" cy="6" r="2"/><circle cx="19" cy="18" r="2"/><circle cx="5" cy="18" r="2"/><path d="M7 6h10M7 18h10M5 8v8M19 8v8"/></svg>
+        流程
+      </a>
+      <a href="/usage">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 3v18h18"/><path d="M18 17V9"/><path d="M13 17V5"/><path d="M8 17v-3"/></svg>
+        用量
+      </a>
+      <a href="/settings">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+        设置
+      </a>
+    </nav>
+    <div class="top-right">
+      <div class="user">
+        <span class="avatar">{% if user.picture %}<img src="{{ user.picture }}" alt="">{% else %}{{ (user.name or '?')[:1] }}{% endif %}</span>
+        <span>{{ user.name }}</span>
+        <a href="/logout" title="退出登录" aria-label="退出登录" style="display:inline-flex;color:#a1a1aa">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+        </a>
+      </div>
+    </div>
+  </div>
+</div>
+
+<main>
+  <div class="page-head">
+    <div>
+      <h1>数据源 · {{ db.title or 'Notion Database' }}</h1>
+      <p class="sub">
+        <span>关联的 Notion 原始文章库，作为发布台唯一内容来源</span>
+        {% if cache.fetched_at %}
+        <span class="badge {{ 'amber' if cache.stale else ('gray' if cache.hit else '') }}">
+          {% if cache.stale %}降级缓存{% elif cache.hit %}缓存命中 · {{ age_text }}{% else %}刚刚实时同步{% endif %}
+        </span>
+        {% endif %}
+      </p>
+    </div>
+    <div style="display:flex;gap:8px;align-items:center">
+      {% if db.url %}
+      <a class="btn" href="{{ db.url }}" target="_blank" rel="noopener">
+        在 Notion 打开
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+      </a>
+      {% endif %}
+      <button type="button" class="btn btn-primary" id="refresh-btn">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12a9 9 0 1 1-2.64-6.36"/><polyline points="21 3 21 9 15 9"/></svg>
+        立即同步
+      </button>
+    </div>
+  </div>
+
+  {% if snap.error %}
+  <div class="tip">{{ snap.error }}</div>
+  {% endif %}
+
+  <div class="stats">
+    <div class="stat">
+      <div class="k">数据库文章</div>
+      <div class="v">{{ stats.total or 0 }}</div>
+      <div class="s">已同步到本地发布台 {{ synced_count }} 篇{% if stats.truncated %}（仅展示前 500 篇）{% endif %}</div>
+    </div>
+    <div class="stat">
+      <div class="k">已发布状态</div>
+      <div class="v">{{ (stats.status_counts or {}).get('已发布', 0) }}</div>
+      <div class="s">待触发「{{ wh.trigger_status }}」 {{ (stats.status_counts or {}).get(wh.trigger_status, 0) }} 篇</div>
+    </div>
+    <div class="stat">
+      <div class="k">最近同步</div>
+      <div class="v" style="font-size:16px;line-height:1.45">{{ cache.fetched_at[5:16] if cache.fetched_at else '—' }}</div>
+      <div class="s">{{ age_text }} · 缓存 TTL {{ (cache.ttl_seconds or 300) // 60 }} 分钟</div>
+    </div>
+    <div class="stat">
+      <div class="k">Webhook 状态</div>
+      <div class="v" style="font-size:16px;line-height:1.45">
+        {% if wh.webhook_secret_configured %}
+        <span class="dot"></span> 已验签接入
+        {% else %}
+        <span class="dot amber"></span> 未配置密钥
+        {% endif %}
+      </div>
+      <div class="s">触发条件：状态 =「{{ wh.trigger_status }}」</div>
+    </div>
+  </div>
+
+  <div class="two">
+    <section class="card">
+      <div class="card-head">
+        <h2>数据库信息与状态分布</h2>
+        <span class="n">{{ (db.properties or [])|length }} 个字段</span>
+      </div>
+      <div class="card-body">
+        <div class="kv">
+          <div class="k">数据库名</div>
+          <div class="v"><b>{{ db.title or '—' }}</b></div>
+          <div class="k">Database ID</div>
+          <div class="v"><span class="mono">{{ db.id or '未配置' }}</span></div>
+          <div class="k">最近编辑</div>
+          <div class="v">{{ stats.latest_edited_time or db.last_edited_time or '—' }}</div>
+        </div>
+
+        {% if stats.status_breakdown %}
+        <div class="bars">
+          {% for st in stats.status_breakdown %}
+          <div class="bar-row">
+            <div style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ st.name }}</div>
+            <div class="bar-track">
+              <div class="bar-fill {{ '' if st.name == '已发布' else ('red' if '失败' in st.name else ('amber' if st.name in ('发布', '发布中') else 'gray')) }}" style="width:{{ st.pct }}%"></div>
+            </div>
+            <div style="text-align:right;color:#71717a;font-variant-numeric:tabular-nums">{{ st.count }} ({{ st.pct }}%)</div>
+          </div>
+          {% endfor %}
+        </div>
+        {% endif %}
+
+        {% if db.properties %}
+        <div class="chips">
+          {% for p in db.properties %}
+          <span class="chip"><b>{{ p.name }}</b> · {{ p.type }}</span>
+          {% endfor %}
+        </div>
+        {% endif %}
+      </div>
+    </section>
+
+    <section class="card">
+      <div class="card-head">
+        <h2>Webhook 与自动同步</h2>
+        <span class="n">
+          {% if wh.inflight_count %}发布中 {{ wh.inflight_count }} 篇{% else %}空闲待命{% endif %}
+        </span>
+      </div>
+      <div class="card-body">
+        <div class="kv">
+          <div class="k">回调地址</div>
+          <div class="v"><span class="mono">{{ webhook_url }}</span></div>
+          <div class="k">验签模式</div>
+          <div class="v">
+            {% if wh.secret_mode == 'env' %}
+            <span class="badge">HMAC-SHA256 · 环境变量密钥</span>
+            {% elif wh.secret_mode == 'captured' %}
+            <span class="badge">HMAC-SHA256 · 自动捕获 Token</span>
+            {% else %}
+            <span class="badge amber">未配置密钥（跳过验签）</span>
+            {% endif %}
+          </div>
+          <div class="k">支持协议</div>
+          <div class="v">Notion 集成 Webhook + Database Automation</div>
+          <div class="k">最近回调</div>
+          <div class="v">{{ wh.last_event_at or '本次启动以来暂无回调' }}{% if wh.last_event_source %} · <span class="dim">{{ wh.last_event_source }}</span>{% endif %}</div>
+        </div>
+
+        <div class="wh-mini">
+          <div class="wh-box">
+            <div class="k">本次接收事件</div>
+            <div class="v">{{ wh.received }}</div>
+          </div>
+          <div class="wh-box">
+            <div class="k">触发发布</div>
+            <div class="v" style="color:#0b7a44">{{ wh.accepted }}</div>
+          </div>
+          <div class="wh-box">
+            <div class="k">去重 / 跳过</div>
+            <div class="v" style="color:#71717a">{{ wh.skipped }}</div>
+          </div>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <section class="card">
+    <div class="card-head">
+      <h2>Notion 原始文章列表</h2>
+      <span class="n" id="list-count">共 {{ items|length }} 篇</span>
+    </div>
+    <div class="toolbar">
+      <input type="text" class="search" id="search-input" placeholder="搜索文章标题…">
+      <div class="filters" id="status-filters">
+        <button type="button" class="pill active" data-status="">全部 ({{ items|length }})</button>
+        {% for st in stats.status_breakdown %}
+        <button type="button" class="pill" data-status="{{ st.name }}">{{ st.name }} ({{ st.count }})</button>
+        {% endfor %}
+      </div>
+    </div>
+    {% if items %}
+    <div class="scroll">
+      <table>
+        <thead>
+          <tr>
+            <th>标题</th>
+            <th>Notion 状态</th>
+            <th class="hide-sm">最后编辑</th>
+            <th>发布台状态</th>
+            <th style="text-align:right">操作</th>
+          </tr>
+        </thead>
+        <tbody id="items-body">
+          {% for it in items %}
+          <tr data-title="{{ it.title|lower }}" data-status="{{ it.status }}">
+            <td class="title-cell">
+              {% if it.url %}
+              <a href="{{ it.url }}" target="_blank" rel="noopener">{{ it.title }}</a>
+              {% else %}
+              {{ it.title }}
+              {% endif %}
+              {% if it.has_cover %}<span class="dim" style="margin-left:6px" title="已有封面">🖼</span>{% endif %}
+            </td>
+            <td>
+              <span class="badge {{ '' if it.status == '已发布' else ('red' if '失败' in it.status else ('amber' if it.status in ('发布', '发布中') else 'gray')) }}">{{ it.status }}</span>
+            </td>
+            <td class="dim hide-sm">{{ it.last_edited_time or '—' }}</td>
+            <td>
+              {% if it.synced %}
+              <span class="badge blue">已同步</span>
+              {% else %}
+              <span class="dim">未同步</span>
+              {% endif %}
+            </td>
+            <td style="text-align:right;white-space:nowrap">
+              {% if it.preview_url %}
+              <a class="link-green" href="{{ it.preview_url }}" target="_blank" rel="noopener">预览</a>
+              {% endif %}
+              {% if it.url %}
+              <a class="dim" style="margin-left:8px" href="{{ it.url }}" target="_blank" rel="noopener">Notion ↗</a>
+              {% endif %}
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+    <div class="empty">暂无可展示的 Notion 文章记录。</div>
+    {% endif %}
+  </section>
+</main>
+
+<script>
+(function () {
+  var btn = document.getElementById('refresh-btn');
+  if (btn) {
+    btn.addEventListener('click', async function () {
+      btn.disabled = true;
+      var oldText = btn.innerHTML;
+      btn.textContent = '同步中…';
+      try {
+        await fetch('/source/refresh', { method: 'POST' });
+        location.href = '/source';
+      } catch (e) {
+        btn.disabled = false;
+        btn.innerHTML = oldText;
+      }
+    });
+  }
+
+  var search = document.getElementById('search-input');
+  var pills = document.querySelectorAll('#status-filters .pill');
+  var rows = document.querySelectorAll('#items-body tr');
+  var countEl = document.getElementById('list-count');
+  var curStatus = '';
+
+  function applyFilter() {
+    var q = (search ? search.value : '').trim().toLowerCase();
+    var visible = 0;
+    rows.forEach(function (tr) {
+      var okStatus = !curStatus || tr.dataset.status === curStatus;
+      var okText = !q || (tr.dataset.title || '').indexOf(q) !== -1;
+      var show = okStatus && okText;
+      tr.style.display = show ? '' : 'none';
+      if (show) visible++;
+    });
+    if (countEl) countEl.textContent = '显示 ' + visible + ' / ' + rows.length + ' 篇';
+  }
+
+  if (search) search.addEventListener('input', applyFilter);
+  pills.forEach(function (p) {
+    p.addEventListener('click', function () {
+      pills.forEach(function (x) { x.classList.remove('active'); });
+      p.classList.add('active');
+      curStatus = p.dataset.status || '';
+      applyFilter();
+    });
+  });
+})();
+</script>
+</body>
+</html>

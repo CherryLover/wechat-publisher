@@ -12,6 +12,7 @@ import json
 import logging
 import os
 from collections import OrderedDict
+from datetime import datetime
 from pathlib import Path
 from typing import Optional
 
@@ -34,6 +35,35 @@ _SEEN_MAX = 500
 # 正在发布的页面，避免并发重复
 _inflight: set[str] = set()
 _locks: dict[str, asyncio.Lock] = {}
+
+# 运行期 Webhook 统计（内存中记录，供数据源页与拓扑图展示）
+_stats = {
+    "received": 0,
+    "accepted": 0,
+    "skipped": 0,
+    "invalid_sig": 0,
+    "last_event_at": "",
+    "last_event_source": "",
+    "last_page_id": "",
+}
+
+
+def get_runtime_stats() -> dict:
+    """返回 Webhook 配置与运行态统计"""
+    env_secret = os.getenv("NOTION_WEBHOOK_SECRET", "").strip()
+    file_secret = (not env_secret) and SECRET_FILE.exists()
+    secret_mode = "env" if env_secret else ("captured" if file_secret else "none")
+    return {
+        "notion_token": bool(os.getenv("NOTION_TOKEN")),
+        "webhook_secret_configured": bool(_get_secret()),
+        "secret_mode": secret_mode,
+        "wechat_configured": _get_wechat() is not None,
+        "trigger_status": TRIGGER_STATUS,
+        "inflight": list(_inflight),
+        "inflight_count": len(_inflight),
+        "seen_events": len(_seen_events),
+        **_stats,
+    }
 
 
 def _get_secret() -> str:
@@ -121,6 +151,7 @@ async def notion_webhook(request: Request):
 
     if secret:
         if not verify_signature(raw, signature, secret):
+            _stats["invalid_sig"] += 1
             logger.warning("Webhook 验签失败")
             raise HTTPException(status_code=401, detail="invalid signature")
     else:
@@ -159,25 +190,36 @@ async def notion_webhook(request: Request):
         or f"{payload.get('type')}:{payload.get('timestamp')}"
     )
 
+    event_source = source_info.get("type") or payload.get("type", "?")
+    _stats["received"] += 1
+    _stats["last_event_at"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    _stats["last_event_source"] = str(event_source)
+    if page_id:
+        _stats["last_page_id"] = page_id
+
     logger.info(
         "收到事件 source=%s page=%s",
-        source_info.get("type") or payload.get("type", "?"),
+        event_source,
         (page_id or "")[:8],
     )
 
     if not _remember(event_id):
+        _stats["skipped"] += 1
         return {"ok": True, "skipped": "duplicate"}
 
     if not page_id:
+        _stats["skipped"] += 1
         return {"ok": True, "skipped": "no page id"}
 
     # 报文里带了属性就先用它判断，省一次 API 调用
     if properties:
         st = (properties.get("状态") or {}).get("select") or {}
         if st.get("name") != TRIGGER_STATUS:
+            _stats["skipped"] += 1
             return {"ok": True, "skipped": "status=%s" % st.get("name")}
 
     # 尽快返回 200，发布放后台
+    _stats["accepted"] += 1
     asyncio.create_task(_handle_page_event(page_id))
     return {"ok": True, "accepted": True}
 

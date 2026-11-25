@@ -1,0 +1,274 @@
+"""
+关联 Notion Database 信息聚合与缓存
+
+- 读取关联数据库元信息（标题、属性结构、链接）与原始文章列表
+- 聚合基础统计（总数、状态分布、最近编辑时间）
+- 内存 + 磁盘 JSON 双层缓存（默认 TTL 5 分钟），支持手动强制刷新与 API 失败降级
+"""
+
+import asyncio
+import json
+import logging
+import os
+import time
+from datetime import datetime, timezone
+from pathlib import Path
+from typing import Any, Optional
+
+from .notion_source import NotionError, NotionSource
+
+logger = logging.getLogger(__name__)
+
+DATA_DIR = Path(os.getenv("DATA_DIR", "/app/data"))
+CACHE_PATH = DATA_DIR / "notion_db_cache.json"
+DEFAULT_TTL = int(os.getenv("NOTION_CACHE_TTL", "300"))
+
+_mem_cache: Optional[dict[str, Any]] = None
+_fetch_lock: Optional[asyncio.Lock] = None
+
+
+def _get_lock() -> asyncio.Lock:
+    global _fetch_lock
+    if _fetch_lock is None:
+        _fetch_lock = asyncio.Lock()
+    return _fetch_lock
+
+
+def get_database_id() -> str:
+    return (os.getenv("NOTION_DB_ID") or os.getenv("NOTION_DATABASE_ID") or "").strip()
+
+
+def normalize_id(raw: Optional[str]) -> str:
+    return (raw or "").replace("-", "").lower()
+
+
+def _extract_plain(rich_list: Optional[list[dict]]) -> str:
+    return "".join(x.get("plain_text", "") for x in (rich_list or [])).strip()
+
+
+def _extract_title(page: dict) -> str:
+    props = page.get("properties") or {}
+    # 优先取名为「标题」的字段，其次任意 type == "title" 的字段
+    named = NotionSource.prop_text(page, "标题")
+    if named:
+        return str(named).strip()
+    for p in props.values():
+        if isinstance(p, dict) and p.get("type") == "title":
+            t = _extract_plain(p.get("title"))
+            if t:
+                return t
+    return "(无标题)"
+
+
+def _extract_status(page: dict) -> str:
+    props = page.get("properties") or {}
+    for key in ("状态", "Status", "status"):
+        prop = props.get(key)
+        if not isinstance(prop, dict):
+            continue
+        ptype = prop.get("type")
+        if ptype == "select":
+            name = (prop.get("select") or {}).get("name")
+            if name:
+                return str(name)
+        elif ptype == "status":
+            name = (prop.get("status") or {}).get("name")
+            if name:
+                return str(name)
+    return "未设置"
+
+
+def _fmt_iso(ts: Optional[str]) -> str:
+    if not ts:
+        return ""
+    return ts[:16].replace("T", " ")
+
+
+def _parse_snapshot(db_meta: dict, pages: list[dict], truncated: bool) -> dict[str, Any]:
+    db_title = _extract_plain(db_meta.get("title")) or "Notion 文章库"
+    props_raw = db_meta.get("properties") or {}
+    properties = [
+        {"name": name, "type": (info.get("type") or "unknown")}
+        for name, info in props_raw.items()
+        if isinstance(info, dict)
+    ]
+
+    status_counts: dict[str, int] = {}
+    items: list[dict[str, Any]] = []
+    for p in pages:
+        status = _extract_status(p)
+        status_counts[status] = status_counts.get(status, 0) + 1
+        items.append({
+            "id": p.get("id") or "",
+            "title": _extract_title(p),
+            "status": status,
+            "url": p.get("url") or "",
+            "created_time": _fmt_iso(p.get("created_time")),
+            "last_edited_time": _fmt_iso(p.get("last_edited_time")),
+            "has_cover": bool(p.get("cover")),
+        })
+
+    total = len(items)
+    status_breakdown = [
+        {
+            "name": name,
+            "count": cnt,
+            "pct": round(cnt * 100 / total, 1) if total else 0.0,
+        }
+        for name, cnt in sorted(status_counts.items(), key=lambda kv: (-kv[1], kv[0]))
+    ]
+
+    now_ts = time.time()
+    return {
+        "fetched_at_ts": now_ts,
+        "fetched_at": datetime.fromtimestamp(now_ts, tz=timezone.utc).astimezone().strftime("%Y-%m-%d %H:%M:%S"),
+        "database": {
+            "id": db_meta.get("id") or get_database_id(),
+            "title": db_title,
+            "url": db_meta.get("url") or "",
+            "created_time": _fmt_iso(db_meta.get("created_time")),
+            "last_edited_time": _fmt_iso(db_meta.get("last_edited_time")),
+            "properties": properties,
+        },
+        "stats": {
+            "total": total,
+            "truncated": truncated,
+            "status_counts": status_counts,
+            "status_breakdown": status_breakdown,
+            "latest_edited_time": items[0]["last_edited_time"] if items else "",
+        },
+        "items": items,
+    }
+
+
+def _load_disk_cache() -> Optional[dict[str, Any]]:
+    if not CACHE_PATH.exists():
+        return None
+    try:
+        data = json.loads(CACHE_PATH.read_text(encoding="utf-8"))
+        if isinstance(data, dict) and "fetched_at_ts" in data and "database" in data:
+            return data
+    except Exception as e:
+        logger.warning("读取 Notion 数据库缓存失败: %s", e)
+    return None
+
+
+def _save_disk_cache(snapshot: dict[str, Any]) -> None:
+    try:
+        CACHE_PATH.parent.mkdir(parents=True, exist_ok=True)
+        tmp = CACHE_PATH.with_suffix(".json.tmp")
+        tmp.write_text(json.dumps(snapshot, ensure_ascii=False, indent=2), encoding="utf-8")
+        tmp.replace(CACHE_PATH)
+    except Exception as e:
+        logger.warning("写入 Notion 数据库缓存失败: %s", e)
+
+
+def clear_cache() -> None:
+    """清空内存缓存（测试用）"""
+    global _mem_cache
+    _mem_cache = None
+
+
+def _decorate_meta(
+    snapshot: dict[str, Any],
+    *,
+    cache_hit: bool,
+    stale: bool = False,
+    error: Optional[str] = None,
+    ttl: int = DEFAULT_TTL,
+) -> dict[str, Any]:
+    age = max(0, int(time.time() - float(snapshot.get("fetched_at_ts", 0))))
+    expires_in = max(0, ttl - age)
+    out = dict(snapshot)
+    out["configured"] = True
+    out["cache"] = {
+        "hit": cache_hit,
+        "stale": stale,
+        "age_seconds": age,
+        "ttl_seconds": ttl,
+        "expires_in_seconds": expires_in,
+        "fetched_at": snapshot.get("fetched_at") or "",
+    }
+    out["error"] = error
+    return out
+
+
+async def get_database_snapshot(
+    *,
+    force_refresh: bool = False,
+    ttl: Optional[int] = None,
+) -> dict[str, Any]:
+    """获取关联 Notion Database 快照（带内存+磁盘缓存与失败降级）"""
+    global _mem_cache
+    effective_ttl = DEFAULT_TTL if ttl is None else max(1, int(ttl))
+    token = os.getenv("NOTION_TOKEN", "").strip()
+    db_id = get_database_id()
+
+    if not token or not db_id:
+        missing = []
+        if not token:
+            missing.append("NOTION_TOKEN")
+        if not db_id:
+            missing.append("NOTION_DB_ID")
+        return {
+            "configured": False,
+            "error": f"缺少环境变量：{', '.join(missing)}",
+            "database": {"id": db_id, "title": "未关联", "url": "", "properties": []},
+            "stats": {"total": 0, "truncated": False, "status_counts": {}, "status_breakdown": [], "latest_edited_time": ""},
+            "items": [],
+            "cache": {"hit": False, "stale": False, "age_seconds": 0, "ttl_seconds": effective_ttl, "expires_in_seconds": 0, "fetched_at": ""},
+        }
+
+    # 先尝试读内存或磁盘缓存
+    if _mem_cache is None:
+        _mem_cache = _load_disk_cache()
+
+    now = time.time()
+    if (
+        not force_refresh
+        and _mem_cache is not None
+        and normalize_id((_mem_cache.get("database") or {}).get("id")) == normalize_id(db_id)
+        and (now - float(_mem_cache.get("fetched_at_ts", 0))) < effective_ttl
+    ):
+        return _decorate_meta(_mem_cache, cache_hit=True, ttl=effective_ttl)
+
+    # 加锁回源 Notion API，避免并发击穿
+    async with _get_lock():
+        now = time.time()
+        if (
+            not force_refresh
+            and _mem_cache is not None
+            and normalize_id((_mem_cache.get("database") or {}).get("id")) == normalize_id(db_id)
+            and (now - float(_mem_cache.get("fetched_at_ts", 0))) < effective_ttl
+        ):
+            return _decorate_meta(_mem_cache, cache_hit=True, ttl=effective_ttl)
+
+        try:
+            source = NotionSource(token)
+            db_meta = await source.get_database(db_id)
+            pages, truncated = await source.query_database(
+                db_id,
+                sorts=[{"timestamp": "last_edited_time", "direction": "descending"}],
+            )
+            snapshot = _parse_snapshot(db_meta, pages, truncated)
+            _mem_cache = snapshot
+            _save_disk_cache(snapshot)
+            return _decorate_meta(snapshot, cache_hit=False, ttl=effective_ttl)
+        except Exception as e:
+            logger.warning("拉取 Notion Database 失败: %s", e)
+            if _mem_cache is not None:
+                return _decorate_meta(
+                    _mem_cache,
+                    cache_hit=True,
+                    stale=True,
+                    error=f"实时同步失败，已展示上次缓存：{e}",
+                    ttl=effective_ttl,
+                )
+            return {
+                "configured": True,
+                "error": f"拉取 Notion Database 失败：{e}",
+                "database": {"id": db_id, "title": "加载失败", "url": "", "properties": []},
+                "stats": {"total": 0, "truncated": False, "status_counts": {}, "status_breakdown": [], "latest_edited_time": ""},
+                "items": [],
+                "cache": {"hit": False, "stale": False, "age_seconds": 0, "ttl_seconds": effective_ttl, "expires_in_seconds": 0, "fetched_at": ""},
+            }
