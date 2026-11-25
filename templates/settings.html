@@ -166,9 +166,12 @@ select:focus{outline:none;border-color:#07c160}
             <p class="hint" style="margin:0 0 14px">用 Bark 把进度推到 iPhone，成了败了都会响。</p>
 
             <div class="field">
-              <label class="lbl" for="bark_key">设备 Key</label>
-              <input id="bark_key" type="text" name="bark_key" value="{{ cfg.notify.bark.key }}" placeholder="在 Bark App 首页复制">
-              <p class="hint">Bark App 首页那一串，不含 https://api.day.app/</p>
+              <label class="lbl" for="bark_key" style="display:flex;align-items:center;gap:8px">
+                设备 Key
+                {% if notify_configured %}<span class="badge">已设置</span>{% endif %}
+              </label>
+              <input id="bark_key" type="password" name="bark_key" autocomplete="new-password" placeholder="{% if notify_configured %}已设置，留空保持不变，输入新值可更新{% else %}在 Bark App 首页复制{% endif %}">
+              <p class="hint">Bark App 首页那一串，不含 https://api.day.app/；仅支持设置或更新，不回显原值</p>
             </div>
 
             <div class="two">
@@ -218,9 +221,12 @@ select:focus{outline:none;border-color:#07c160}
             </div>
 
             <div class="field">
-              <label class="lbl" for="ai_api_key">API Key</label>
-              <input id="ai_api_key" type="text" name="ai_api_key" value="{{ cfg.ai_images.api_key }}" placeholder="sk-...">
-              <p class="hint">留空 = 沿用已保存的 Key；明文存在服务器 data/config.json</p>
+              <label class="lbl" for="ai_api_key" style="display:flex;align-items:center;gap:8px">
+                API Key
+                {% if ai_key_configured %}<span class="badge">已设置</span>{% endif %}
+              </label>
+              <input id="ai_api_key" type="password" name="ai_api_key" autocomplete="new-password" placeholder="{% if ai_key_configured %}已设置，留空保持不变，输入新值可更新{% else %}sk-...{% endif %}">
+              <p class="hint">留空 = 沿用已保存的 Key；仅支持设置或更新，不回显原值</p>
             </div>
 
             <div class="two">

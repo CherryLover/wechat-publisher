@@ -273,6 +273,14 @@ async def settings_page(
         return RedirectResponse("/login", status_code=303)
 
     cfg = config.load_config()
+    notify_configured = bool(((cfg.get("notify") or {}).get("bark") or {}).get("key"))
+    ai_key_configured = bool((cfg.get("ai_images") or {}).get("api_key"))
+    # 密钥只允许设置/更新，绝不回显到页面 HTML
+    if isinstance(cfg.get("notify"), dict) and isinstance(cfg["notify"].get("bark"), dict):
+        cfg["notify"]["bark"]["key"] = ""
+    if isinstance(cfg.get("ai_images"), dict):
+        cfg["ai_images"]["api_key"] = ""
+
     themes = list_themes()
     articles = article.list_articles()
     token = create_preview_token()["token"]
@@ -288,7 +296,8 @@ async def settings_page(
         "saved": bool(saved),
         "sample": sample,
         "token": token,
-        "notify_configured": bool(((cfg.get("notify") or {}).get("bark") or {}).get("key")),
+        "notify_configured": notify_configured,
+        "ai_key_configured": ai_key_configured,
         "pw_enabled": password_auth.is_enabled(cfg),
         "pw_has_password": password_auth.has_password(cfg),
         "can_manage_password": _is_oidc_user(user),
