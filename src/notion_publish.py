@@ -262,7 +262,12 @@ async def publish_page(
 
         await source.set_select(page_id, "状态", STATUS_PUBLISHED)
         await notify_event("success", "发布成功", f"「{title}」已进草稿箱，去后台点发表。")
-        style_note = f"，配图风格：{ai.style_name}" if (ai and getattr(ai, "style_name", "")) else ""
+        if ai and getattr(ai, "skipped_existing_images", False):
+            style_note = "，已有配图已跳过 AI 生图"
+        elif ai and getattr(ai, "style_name", ""):
+            style_note = f"，配图风格：{ai.style_name}"
+        else:
+            style_note = ""
         return {"success": True,
                 "message": f"已发布到草稿箱（{len(md)} 字{style_note}）",
                 "draft_media_id": media_id}

@@ -42,6 +42,7 @@ DEFAULTS = {
         "style_mode": "auto",        # auto：模型按文章自由设计风格 | fixed：固定下面那串
         "style": "",                 # fixed 模式的风格描述
         "write_to_notion": True,     # 生成的图回写 Notion（封面 + 插图块）
+        "skip_if_has_images": False, # 文章正文已有配图时跳过 AI 规划与生图
         "max_width": 1200,           # 出图后压缩宽度
         "cover_size": "1536x1024",
         "illustration_size": "1536x1024",

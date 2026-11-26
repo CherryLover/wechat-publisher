@@ -106,10 +106,21 @@ class AIResult:
     style_id: str = ""
     style_name: str = ""
     items: list = field(default_factory=list)   # 成功的插图：[{kind,url,alt,heading,path}]
+    skipped_existing_images: bool = False
 
     @property
     def ok(self) -> bool:
         return bool(self.items) or bool(self.cover_bytes)
+
+
+_MD_IMG_RE = re.compile(r"!\[[^\]]*\]\([^)\s]+(?:\s+[^)]*)?\)")
+_HTML_IMG_RE = re.compile(r"<img\b[^>]*\bsrc\s*=", re.IGNORECASE)
+
+
+def has_existing_images(markdown: str) -> bool:
+    """判断文章正文 Markdown 中是否已经包含配图"""
+    text = markdown or ""
+    return bool(_MD_IMG_RE.search(text) or _HTML_IMG_RE.search(text))
 
 
 # ---------- 配置 ----------
@@ -480,6 +491,10 @@ async def build(title: str, markdown: str, *, ref: str, upload_dir: Path,
     cfg = get_cfg()
     if not is_enabled(cfg):
         return AIResult(markdown=markdown)
+
+    if cfg.get("skip_if_has_images") and has_existing_images(markdown):
+        logger.info("文章已有配图且已开启「已有配图时跳过」，跳过 AI 配图规划与生成")
+        return AIResult(markdown=markdown, skipped_existing_images=True)
 
     base = (base or public_base()).rstrip("/")
     upload_dir = Path(upload_dir)

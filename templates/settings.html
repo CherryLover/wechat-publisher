@@ -285,6 +285,7 @@ select:focus{outline:none;border-color:#07c160}
 
             <div class="checks" style="margin-top:2px">
               <label class="check"><input type="checkbox" name="ai_write_notion" {% if cfg.ai_images.write_to_notion %}checked{% endif %}>生成的图回写 Notion（页面封面 + 标题后的插图块）</label>
+              <label class="check"><input type="checkbox" name="ai_skip_if_has_images" {% if cfg.ai_images.skip_if_has_images %}checked{% endif %}>文章已有配图时跳过 AI 生成（正文含图片直接跳过规划与生图）</label>
             </div>
           </div>
           <div class="card-foot">

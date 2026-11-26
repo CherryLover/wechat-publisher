@@ -252,7 +252,7 @@ main{max-width:1280px;margin:0 auto;padding:18px 24px 44px}
             <div class="step-h">
               AI 配图规划与生图
               <span class="step-badge {{ '' if ai_enabled else 'off' }}">
-                {% if ai_enabled %}{{ '自由风格' if ai_cfg.style_mode != 'fixed' else '固定风格' }}{% else %}已关闭{% endif %}
+                {% if ai_enabled %}{{ '自由风格' if ai_cfg.style_mode != 'fixed' else '固定风格' }}{% if ai_cfg.skip_if_has_images %} · 有图跳过{% endif %}{% else %}已关闭{% endif %}
               </span>
             </div>
             <div class="step-d">文生文读文章出 4 条提示词，生成 1 张封面 + 3 张插图并按小节插入正文</div>

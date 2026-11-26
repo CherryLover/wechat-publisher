@@ -350,6 +350,7 @@ async def save_settings(request: Request):
         "style_mode": (form.get("ai_style_mode") or "auto").strip() or "auto",
         "style": (form.get("ai_style") or "").strip(),
         "write_to_notion": form.get("ai_write_notion") == "on",
+        "skip_if_has_images": form.get("ai_skip_if_has_images") == "on",
         "max_width": max_width,
         "cover_size": (form.get("ai_cover_size") or "1536x1024").strip(),
         "illustration_size": (form.get("ai_illustration_size") or "1536x1024").strip(),
