@@ -140,6 +140,12 @@ main{max-width:1280px;margin:0 auto;padding:18px 24px 44px}
         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
         设置
       </a>
+      {% if user.role == 'admin' %}
+      <a href="/admin">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+        管理
+      </a>
+      {% endif %}
     </nav>
     <div class="top-right">
       <div class="user">
@@ -198,19 +204,19 @@ main{max-width:1280px;margin:0 auto;padding:18px 24px 44px}
           </span>
         </div>
         <div class="node-sub">
-          <span class="mono-sm">/notion/webhook</span><br>
+          <span class="mono-sm" style="word-break:break-all">{{ webhook_url or '/notion/webhook/<专属Token>' }}</span><br>
           兼容集成订阅与 Database Automation；本次接收 {{ wh.received }} 次，触发 {{ wh.accepted }} 次
         </div>
       </div>
 
-      <div class="node-card muted" data-side="left" data-active="{{ '1' if auth_token_on else '0' }}">
+      <a class="node-card {{ '' if mcp_ready else 'muted' }}" href="/settings" data-side="left" data-active="{{ '1' if mcp_ready else '0' }}">
         <div class="node-top">
-          <span class="dot {{ 'on' if auth_token_on else 'off' }}"></span>
-          <span class="node-title">MCP / REST API</span>
-          <span class="node-right dim">{{ 'Bearer 保护' if auth_token_on else '开放模式' }}</span>
+          <span class="dot {{ 'on' if mcp_ready else 'off' }}"></span>
+          <span class="node-title">专属 MCP / REST API</span>
+          <span class="node-right {{ '' if mcp_ready else 'dim' }}">{{ '已激活' if mcp_ready else '待配公众号' }}</span>
         </div>
-        <div class="node-sub">支持外部 Agent / CLI 直接创建文章、预览排版并推送到草稿箱</div>
-      </div>
+        <div class="node-sub">支持外部 Agent / CLI 通过你的专属地址直接创建文章、预览排版并推送到草稿箱</div>
+      </a>
     </div>
 
     <!-- 中栏：核心发布引擎 -->
@@ -252,7 +258,7 @@ main{max-width:1280px;margin:0 auto;padding:18px 24px 44px}
             <div class="step-h">
               AI 配图规划与生图
               <span class="step-badge {{ '' if ai_enabled else 'off' }}">
-                {% if ai_enabled %}{{ '自由风格' if ai_cfg.style_mode != 'fixed' else '固定风格' }}{% if ai_cfg.skip_if_has_images %} · 有图跳过{% endif %}{% else %}已关闭{% endif %}
+                {% if ai_enabled %}{{ '自由风格' if ai_cfg.style_mode != 'fixed' else '固定风格' }}{% if ai_cfg.skip_if_has_images %} · ≥{{ ai_cfg.skip_min_images or 2 }}图跳过{% endif %}{% else %}已关闭{% endif %}
               </span>
             </div>
             <div class="step-d">文生文读文章出 4 条提示词，生成 1 张封面 + 3 张插图并按小节插入正文</div>

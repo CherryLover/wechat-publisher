@@ -117,15 +117,23 @@ _MD_IMG_RE = re.compile(r"!\[[^\]]*\]\([^)\s]+(?:\s+[^)]*)?\)")
 _HTML_IMG_RE = re.compile(r"<img\b[^>]*\bsrc\s*=", re.IGNORECASE)
 
 
-def has_existing_images(markdown: str) -> bool:
-    """判断文章正文 Markdown 中是否已经包含配图"""
+def count_existing_images(markdown: str) -> int:
+    """统计文章正文 Markdown 中已有的图片数量"""
     text = markdown or ""
-    return bool(_MD_IMG_RE.search(text) or _HTML_IMG_RE.search(text))
+    return len(_MD_IMG_RE.findall(text)) + len(_HTML_IMG_RE.findall(text))
+
+
+def has_existing_images(markdown: str, min_count: int = 1) -> bool:
+    """判断文章正文 Markdown 中已有配图是否达到指定数量"""
+    return count_existing_images(markdown) >= max(1, int(min_count))
 
 
 # ---------- 配置 ----------
 
-def get_cfg() -> dict:
+def get_cfg(user_id: Optional[str] = None) -> dict:
+    if user_id:
+        from . import tenant
+        return tenant.get_effective_ai_config(user_id)
     return (config.load_config().get("ai_images") or {})
 
 
@@ -175,7 +183,7 @@ def apply_style(prompt: str, style_en: str) -> str:
     return p
 
 
-def resolve_style(plan: dict, fixed_style: Optional[dict] = None) -> tuple[dict, bool]:
+def resolve_style(plan: dict, fixed_style: Optional[dict] = None, user_id: str = "owner") -> tuple[dict, bool]:
     """决定本篇用哪套风格。返回 ({id,name,desc_en}, 是否走了兜底)
 
     模型自由设计，代码只做三件事：能用吗？和最近重复吗？名字给了吗？
@@ -193,7 +201,7 @@ def resolve_style(plan: dict, fixed_style: Optional[dict] = None) -> tuple[dict,
     }
     if not imagestyles.is_usable(text):
         return fallback, True
-    if imagestyles.repeated(text, 4):
+    if imagestyles.repeated(text, 4, user_id=user_id):
         return fallback, True
     return {
         "id": imagestyles.slug(text),
@@ -202,7 +210,7 @@ def resolve_style(plan: dict, fixed_style: Optional[dict] = None) -> tuple[dict,
     }, False
 
 
-def _style_brief(cfg: dict):
+def _style_brief(cfg: dict, user_id: str = "owner"):
     """返回 (风格说明, 固定风格 dict 或 None)"""
     mode = (cfg.get("style_mode") or "auto").lower()
 
@@ -211,7 +219,7 @@ def _style_brief(cfg: dict):
         brief = f"固定风格（4 张图都必须严格照这套画）：{text}"
         return brief, {"id": "custom", "name": "自定义", "desc_en": text}
 
-    recent = imagestyles.recent_styles(4)
+    recent = imagestyles.recent_styles(4, user_id=user_id)
     recent_txt = "这是近期第一篇，风格完全自由发挥。"
     if recent:
         lines = []
@@ -234,13 +242,14 @@ def _style_brief(cfg: dict):
 
 async def plan_prompts(cfg: dict, title: str, md: str,
                        article_ref: Optional[str] = None,
-                       article_title: Optional[str] = None) -> dict:
+                       article_title: Optional[str] = None,
+                       user_id: str = "owner") -> dict:
     """第①步：文章 → 4 条提示词"""
     body = md.strip()
     if len(body) > MAX_BODY_CHARS:
         body = body[:MAX_BODY_CHARS] + "\n\n（正文过长，已截断）"
 
-    style_brief, fixed_style = _style_brief(cfg)
+    style_brief, fixed_style = _style_brief(cfg, user_id=user_id)
     user_msg = (f"{style_brief}\n\n基础画风约束：{BASE_STYLE}\n\n"
                 f"文章标题：{title}\n\n正文：\n{body}\n\n请按约定输出 JSON。")
 
@@ -272,7 +281,7 @@ async def plan_prompts(cfg: dict, title: str, md: str,
             raise AIError(f"模型返回结构不对：{str(plan)[:200]}")
 
         # 风格校验：固定模式直接用；自动模式校验候选 + 避开最近用过
-        chosen, fallback = resolve_style(plan, fixed_style)
+        chosen, fallback = resolve_style(plan, fixed_style, user_id=user_id)
         if fallback:
             logger.warning("模型给的风格不可用或与最近重复，改用兜底风格：%s", chosen["name"])
         plan["_style"] = chosen
@@ -281,19 +290,22 @@ async def plan_prompts(cfg: dict, title: str, md: str,
         usage.record(step="plan", model=cfg.get("text_model"), prompt_tokens=p,
                      completion_tokens=c, total_tokens=t,
                      duration_ms=int((time.time() - t0) * 1000),
-                     article_ref=article_ref, article_title=article_title)
+                     article_ref=article_ref, article_title=article_title,
+                     user_id=user_id)
         return plan
     except Exception as e:
         err = e
         usage.record(step="plan", model=cfg.get("text_model"), ok=False, error=str(e),
                      duration_ms=int((time.time() - t0) * 1000),
-                     article_ref=article_ref, article_title=article_title)
+                     article_ref=article_ref, article_title=article_title,
+                     user_id=user_id)
         raise AIError(f"生成配图提示词失败：{e}") from e
 
 
 async def generate_image(cfg: dict, prompt: str, size: str, *,
                          step: str, article_ref: Optional[str] = None,
-                         article_title: Optional[str] = None) -> bytes:
+                         article_title: Optional[str] = None,
+                         user_id: str = "owner") -> bytes:
     """第②步：一条提示词 → 一张图（原始字节）。5xx/超时自动重试一次。"""
     api = (cfg.get("image_api") or "auto").lower()
     model = cfg.get("image_model")
@@ -309,7 +321,8 @@ async def generate_image(cfg: dict, prompt: str, size: str, *,
             usage.record(step=step, model=model, prompt_tokens=p, completion_tokens=c,
                          total_tokens=t, images=1,
                          duration_ms=int((time.time() - t0) * 1000),
-                         article_ref=article_ref, article_title=article_title)
+                         article_ref=article_ref, article_title=article_title,
+                         user_id=user_id)
             return raw
         except Exception as e:
             last_err = e
@@ -321,7 +334,8 @@ async def generate_image(cfg: dict, prompt: str, size: str, *,
                 continue
             usage.record(step=step, model=model, ok=False, error=str(e),
                          duration_ms=int((time.time() - t0) * 1000),
-                         article_ref=article_ref, article_title=article_title)
+                         article_ref=article_ref, article_title=article_title,
+                         user_id=user_id)
             raise
 
     raise last_err or AIError("生图失败")
@@ -486,34 +500,56 @@ def insert_images(md: str, items: list) -> str:
 # ---------- 主流程 ----------
 
 async def build(title: str, markdown: str, *, ref: str, upload_dir: Path,
-                base: Optional[str] = None) -> AIResult:
+                base: Optional[str] = None, user_id: str = "owner",
+                cfg_override: Optional[dict] = None) -> AIResult:
     """给一篇文章生成 4 张图，返回插好图的 Markdown + 封面字节。"""
-    cfg = get_cfg()
+    uid = user_id or "owner"
+    if cfg_override is not None:
+        cfg = cfg_override
+    else:
+        try:
+            cfg = get_cfg(uid)
+        except TypeError:
+            cfg = get_cfg()
     if not is_enabled(cfg):
         return AIResult(markdown=markdown)
 
-    if cfg.get("skip_if_has_images") and has_existing_images(markdown):
-        logger.info("文章已有配图且已开启「已有配图时跳过」，跳过 AI 配图规划与生成")
-        return AIResult(markdown=markdown, skipped_existing_images=True)
+    if cfg.get("skip_if_has_images"):
+        raw = cfg.get("skip_min_images")
+        if raw is None or raw == "":
+            min_images = 2
+        else:
+            try:
+                min_images = max(1, int(raw))
+            except (TypeError, ValueError):
+                min_images = 2
+        existing_count = count_existing_images(markdown)
+        if existing_count >= min_images:
+            logger.info(
+                "文章已有 %d 张配图（阈值 %d 张）且已开启「已有配图时跳过」，跳过 AI 配图规划与生成",
+                existing_count, min_images,
+            )
+            return AIResult(markdown=markdown, skipped_existing_images=True)
 
     base = (base or public_base()).rstrip("/")
-    upload_dir = Path(upload_dir)
-    tag = hashlib.sha1((ref or title).encode("utf-8")).hexdigest()[:8]
+    upload_dir = Path(upload_dir) / uid
+    upload_dir.mkdir(parents=True, exist_ok=True)
+    tag = hashlib.sha1((f"{uid}:{ref or title}").encode("utf-8")).hexdigest()[:8]
 
     plan = await plan_prompts(cfg, title, markdown,
-                              article_ref=ref, article_title=title)
+                              article_ref=ref, article_title=title, user_id=uid)
 
     # plan_prompts 正常会把 _style 放进来；被替换/老计划时这里补一次兜底
     style = plan.get("_style")
     if not style:
-        _, fixed_style = _style_brief(cfg)
-        style, _ = resolve_style(plan, fixed_style)
+        _, fixed_style = _style_brief(cfg, user_id=uid)
+        style, _ = resolve_style(plan, fixed_style, user_id=uid)
         plan["_style"] = style
         plan["_style_en"] = style.get("desc_en") or BASE_STYLE
     style_en = plan.get("_style_en") or BASE_STYLE
     try:
         imagestyles.log_use(ref, style.get("id") or "custom",
-                            style.get("name") or "", style_en, title)
+                            style.get("name") or "", style_en, title, user_id=uid)
     except Exception:
         pass
     logger.info("本篇配图风格：%s（%s）", style.get("name") or "自定义", style.get("id") or "custom")
@@ -534,10 +570,11 @@ async def build(title: str, markdown: str, *, ref: str, upload_dir: Path,
             logger.info("复用已有 AI 封面 %s", cover_path.name)
         else:
             raw = await generate_image(cfg, with_style(plan["cover"]["prompt"]), cover_size,
-                                       step="cover", article_ref=ref, article_title=title)
+                                       step="cover", article_ref=ref, article_title=title,
+                                       user_id=uid)
             normalize_jpeg(raw, cover_path, max_width=max_width)
         result.cover_bytes = cover_path.read_bytes()
-        result.cover_url = f"{base}/images/{cover_path.name}"
+        result.cover_url = f"{base}/images/{uid}/{cover_path.name}"
         result.style_id = style.get("id") or "custom"
         result.style_name = style.get("name") or "自定义"
     except Exception as e:
@@ -549,11 +586,11 @@ async def build(title: str, markdown: str, *, ref: str, upload_dir: Path,
         if not ill.get("prompt"):
             continue
         name = f"ai-{tag}-ill-{i}.jpg"
-        url = f"{base}/images/{name}"
+        url = f"{base}/images/{uid}/{name}"
         path = upload_dir / name
 
         # 正文里已经有这张图（上次发布回写进 Notion 了）→ 跳过，避免重复插
-        if url in markdown:
+        if url in markdown or f"/images/{name}" in markdown:
             logger.info("正文里已有 %s，跳过生成", name)
             items.append({"kind": f"illustration-{i}", "heading": ill.get("heading") or "",
                           "after_paragraph": ill.get("after_paragraph") or 1,
@@ -567,7 +604,8 @@ async def build(title: str, markdown: str, *, ref: str, upload_dir: Path,
             else:
                 raw = await generate_image(cfg, with_style(ill["prompt"]), ill_size,
                                            step=f"illustration-{i}",
-                                           article_ref=ref, article_title=title)
+                                           article_ref=ref, article_title=title,
+                                           user_id=uid)
                 normalize_jpeg(raw, path, max_width=max_width)
             item = {
                 "kind": f"illustration-{i}",

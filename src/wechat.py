@@ -2,6 +2,7 @@
 微信公众号 API 封装
 """
 
+import asyncio
 import json
 import time
 import httpx
@@ -15,29 +16,34 @@ class WechatAPI:
         self.appsecret = appsecret
         self._access_token: Optional[str] = None
         self._token_expires_at: float = 0
+        self._token_lock = asyncio.Lock()
 
     async def get_access_token(self) -> str:
-        """获取 access_token，带缓存"""
+        """获取 access_token，带缓存与异步锁防并发重复刷新"""
         if self._access_token and time.time() < self._token_expires_at - 300:
             return self._access_token
 
-        async with httpx.AsyncClient() as client:
-            resp = await client.get(
-                f"{self.BASE_URL}/token",
-                params={
-                    "grant_type": "client_credential",
-                    "appid": self.appid,
-                    "secret": self.appsecret
-                }
-            )
-            data = resp.json()
+        async with self._token_lock:
+            if self._access_token and time.time() < self._token_expires_at - 300:
+                return self._access_token
 
-        if "access_token" not in data:
-            raise Exception(f"获取 access_token 失败: {data}")
+            async with httpx.AsyncClient(timeout=20) as client:
+                resp = await client.get(
+                    f"{self.BASE_URL}/token",
+                    params={
+                        "grant_type": "client_credential",
+                        "appid": self.appid,
+                        "secret": self.appsecret
+                    }
+                )
+                data = resp.json()
 
-        self._access_token = data["access_token"]
-        self._token_expires_at = time.time() + data["expires_in"]
-        return self._access_token
+            if "access_token" not in data:
+                raise Exception(f"获取 access_token 失败: {data}")
+
+            self._access_token = data["access_token"]
+            self._token_expires_at = time.time() + data["expires_in"]
+            return self._access_token
 
     async def upload_image(self, image_data: bytes, filename: str = "image.jpg") -> str:
         """上传文章内图片，返回微信图片 URL"""

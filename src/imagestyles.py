@@ -79,8 +79,8 @@ def _conn() -> sqlite3.Connection:
             style_id TEXT NOT NULL
         )
     """)
-    # 老库补列（上一版只有 style_id）
-    for col in ("style_name TEXT", "style_text TEXT"):
+    # 老库补列（上一版只有 style_id / 无 user_id）
+    for col in ("style_name TEXT", "style_text TEXT", "user_id TEXT DEFAULT 'owner'"):
         try:
             conn.execute(f"ALTER TABLE ai_style_log ADD COLUMN {col}")
         except sqlite3.OperationalError:
@@ -89,16 +89,17 @@ def _conn() -> sqlite3.Connection:
 
 
 def log_use(article_ref: Optional[str], style_id: str, style_name: str,
-            style_text: str, article_title: Optional[str] = None) -> None:
+            style_text: str, article_title: Optional[str] = None,
+            user_id: str = "owner") -> None:
     try:
         conn = _conn()
         try:
             conn.execute(
                 "INSERT INTO ai_style_log"
-                " (created_at, article_ref, article_title, style_id, style_name, style_text)"
-                " VALUES (?,?,?,?,?,?)",
+                " (created_at, article_ref, article_title, style_id, style_name, style_text, user_id)"
+                " VALUES (?,?,?,?,?,?,?)",
                 (datetime.now().isoformat(), article_ref, article_title,
-                 style_id, (style_name or "")[:60], (style_text or "")[:MAX_STYLE_LEN]),
+                 style_id, (style_name or "")[:60], (style_text or "")[:MAX_STYLE_LEN], user_id or "owner"),
             )
             conn.commit()
         finally:
@@ -130,11 +131,13 @@ def _rows(sql: str, args: tuple) -> list:
         return []
 
 
-def recent_styles(limit: int = 4) -> list:
+def recent_styles(limit: int = 4, user_id: str = "owner") -> list:
     """最近用过的风格（按 style_id 去重，最近在前）"""
     rows = _rows(
         "SELECT style_id, style_name, style_text, article_title, created_at"
-        " FROM ai_style_log ORDER BY id DESC LIMIT ?", (limit * 4,))
+        " FROM ai_style_log WHERE COALESCE(user_id, 'owner') = ? ORDER BY id DESC LIMIT ?",
+        (user_id or "owner", limit * 4),
+    )
     out: list = []
     seen: set = set()
     for sid, name, text, title, at in rows:
@@ -148,22 +151,24 @@ def recent_styles(limit: int = 4) -> list:
     return out
 
 
-def recent_ids(limit: int = 4) -> list:
-    return [s["style_id"] for s in recent_styles(limit)]
+def recent_ids(limit: int = 4, user_id: str = "owner") -> list:
+    return [s["style_id"] for s in recent_styles(limit, user_id=user_id)]
 
 
-def repeated(style_text: str, limit: int = 4) -> bool:
+def repeated(style_text: str, limit: int = 4, user_id: str = "owner") -> bool:
     """和最近几篇的风格描述是否完全一致"""
     sig = normalize(style_text)
     if not sig:
         return False
-    return any(normalize(s["text"]) == sig for s in recent_styles(limit))
+    return any(normalize(s["text"]) == sig for s in recent_styles(limit, user_id=user_id))
 
 
-def recent_log(limit: int = 20) -> list:
+def recent_log(limit: int = 20, user_id: str = "owner") -> list:
     rows = _rows(
         "SELECT created_at, style_id, style_name, article_ref, article_title"
-        " FROM ai_style_log ORDER BY id DESC LIMIT ?", (limit,))
+        " FROM ai_style_log WHERE COALESCE(user_id, 'owner') = ? ORDER BY id DESC LIMIT ?",
+        (user_id or "owner", limit),
+    )
     return [
         {"at": (r[0] or "")[:16].replace("T", " "), "style_id": r[1],
          "name": r[2] or r[1], "ref": (r[3] or "")[:8], "title": (r[4] or "")[:28]}

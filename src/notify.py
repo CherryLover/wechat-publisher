@@ -1,22 +1,19 @@
 """
-Bark 推送通知
-
-Bark 的接口很简单：POST {server}/{device_key}
-body: {"title": ..., "body": ..., "group": ..., "level": ...}
+Bark 推送通知（按租户配置读取）
 """
 
 import logging
 
 import httpx
 
-from .config import load_config
+from . import tenant
 
 logger = logging.getLogger(__name__)
 
 
-async def send(title: str, body: str, level: str = "active") -> dict:
+async def send(title: str, body: str, level: str = "active", user_id: str = "owner") -> dict:
     """发一条 Bark 通知。未启用或没填 key 时静默跳过"""
-    cfg = load_config()
+    cfg = tenant.get_tenant_config(user_id)
     notify = cfg.get("notify") or {}
     if not notify.get("enabled"):
         return {"ok": False, "reason": "notify_disabled"}
@@ -48,10 +45,16 @@ async def send(title: str, body: str, level: str = "active") -> dict:
         return {"ok": False, "reason": str(e)}
 
 
-async def notify_event(event: str, title: str, body: str, level: str = "active") -> None:
+async def notify_event(
+    event: str,
+    title: str,
+    body: str,
+    level: str = "active",
+    user_id: str = "owner",
+) -> None:
     """按事件开关决定是否推送（event: start / success / error）"""
-    cfg = load_config()
+    cfg = tenant.get_tenant_config(user_id)
     events = ((cfg.get("notify") or {}).get("events")) or {}
     if not events.get(event, False):
         return
-    await send(title, body, level)
+    await send(title, body, level, user_id=user_id)

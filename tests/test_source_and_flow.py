@@ -10,7 +10,7 @@ from unittest.mock import AsyncMock, patch
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
-from src import config, notion_db, oidc, web
+from src import article, auth, config, notion_db, oidc, tenant, usage, web
 from src.notion_source import NotionSource
 
 
@@ -56,13 +56,21 @@ SAMPLE_PAGES = [
 class TestNotionDbCache(unittest.TestCase):
     def setUp(self):
         self._tmp = tempfile.TemporaryDirectory()
-        self.cache_file = Path(self._tmp.name) / "notion_db_cache.json"
+        tmp_dir = Path(self._tmp.name)
+        self.cache_file = tmp_dir / "notion_db_cache.json"
+        self.db_path = tmp_dir / "articles.db"
         self.p_cache = patch.object(notion_db, "CACHE_PATH", self.cache_file)
+        self.p_db = patch.object(tenant, "DB_PATH", self.db_path)
+        self.p_cfg = patch.object(config, "CONFIG_PATH", tmp_dir / "config.json")
         self.p_cache.start()
+        self.p_db.start()
+        self.p_cfg.start()
         notion_db.clear_cache()
 
     def tearDown(self):
         notion_db.clear_cache()
+        self.p_cfg.stop()
+        self.p_db.stop()
         self.p_cache.stop()
         self._tmp.cleanup()
 
@@ -122,10 +130,16 @@ class TestNotionDbCache(unittest.TestCase):
 class TestSourceAndFlowRoutes(unittest.TestCase):
     def setUp(self):
         self._tmp = tempfile.TemporaryDirectory()
-        self.cfg_path = Path(self._tmp.name) / "config.json"
-        self.cache_file = Path(self._tmp.name) / "notion_db_cache.json"
+        tmp_dir = Path(self._tmp.name)
+        self.cfg_path = tmp_dir / "config.json"
+        self.cache_file = tmp_dir / "notion_db_cache.json"
+        self.db_path = tmp_dir / "articles.db"
         self.p_cfg = patch.object(config, "CONFIG_PATH", self.cfg_path)
         self.p_cache = patch.object(notion_db, "CACHE_PATH", self.cache_file)
+        self.p_db = patch.object(tenant, "DB_PATH", self.db_path)
+        self.p_art_db = patch.object(article, "DB_PATH", self.db_path)
+        self.p_tok_db = patch.object(auth, "_TOKEN_DB_PATH", self.db_path)
+        self.p_usage_db = patch.object(usage, "DB_PATH", self.db_path)
         self.p_secret = patch.object(oidc, "SESSION_SECRET", "unit-test-secret")
         self.p_articles = patch.object(web.article, "list_articles", return_value=[])
         self.p_src_map = patch.object(
@@ -137,7 +151,11 @@ class TestSourceAndFlowRoutes(unittest.TestCase):
         self.p_usage = patch.object(
             web.usage, "totals", return_value={"calls": 4, "images": 4, "total_tokens": 1200, "prompt_tokens": 800, "completion_tokens": 400, "errors": 0}
         )
-        for p in (self.p_cfg, self.p_cache, self.p_secret, self.p_articles, self.p_src_map, self.p_preview, self.p_usage):
+        for p in (
+            self.p_cfg, self.p_cache, self.p_db, self.p_art_db, self.p_tok_db,
+            self.p_usage_db, self.p_secret, self.p_articles, self.p_src_map,
+            self.p_preview, self.p_usage,
+        ):
             p.start()
         notion_db.clear_cache()
 
@@ -147,12 +165,17 @@ class TestSourceAndFlowRoutes(unittest.TestCase):
 
     def tearDown(self):
         notion_db.clear_cache()
-        for p in (self.p_usage, self.p_preview, self.p_src_map, self.p_articles, self.p_secret, self.p_cache, self.p_cfg):
+        for p in (
+            self.p_usage, self.p_preview, self.p_src_map, self.p_articles,
+            self.p_secret, self.p_usage_db, self.p_tok_db, self.p_art_db,
+            self.p_db, self.p_cache, self.p_cfg,
+        ):
             p.stop()
         self._tmp.cleanup()
 
     def _auth_cookies(self) -> dict[str, str]:
-        return {oidc.SESSION_COOKIE: oidc.create_session({"sub": "u1", "name": "Owner", "auth_method": "oidc"})}
+        tenant.bootstrap_owner()
+        return {oidc.SESSION_COOKIE: oidc.create_session({"id": "owner", "username": "admin", "role": "admin", "sub": "u1", "name": "Owner", "auth_method": "oidc"})}
 
     def test_requires_login(self):
         self.assertEqual(self.client.get("/source", follow_redirects=False).status_code, 303)

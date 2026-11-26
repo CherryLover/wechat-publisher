@@ -126,6 +126,12 @@ tr:hover td{background:#fafafa}
         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
         设置
       </a>
+      {% if user.role == 'admin' %}
+      <a href="/admin">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+        管理
+      </a>
+      {% endif %}
     </nav>
     <div class="top-right">
       <div class="user">
@@ -167,7 +173,7 @@ tr:hover td{background:#fafafa}
   </div>
 
   {% if snap.error %}
-  <div class="tip">{{ snap.error }}</div>
+  <div class="tip">{{ snap.error }} {% if not snap.configured %}<a href="/settings" style="text-decoration:underline;font-weight:500">前往设置页配置 →</a>{% endif %}</div>
   {% endif %}
 
   <div class="stats">
@@ -249,13 +255,13 @@ tr:hover td{background:#fafafa}
       <div class="card-body">
         <div class="kv">
           <div class="k">回调地址</div>
-          <div class="v"><span class="mono">{{ webhook_url }}</span></div>
+          <div class="v"><span class="mono">{{ webhook_url or '请先在设置页配置公众号生成专属地址' }}</span></div>
           <div class="k">验签模式</div>
           <div class="v">
-            {% if wh.secret_mode == 'env' %}
+            {% if wh.secret_mode == 'configured' or wh.secret_mode == 'captured' %}
+            <span class="badge">HMAC-SHA256 · 已配置密钥</span>
+            {% elif wh.secret_mode == 'env' %}
             <span class="badge">HMAC-SHA256 · 环境变量密钥</span>
-            {% elif wh.secret_mode == 'captured' %}
-            <span class="badge">HMAC-SHA256 · 自动捕获 Token</span>
             {% else %}
             <span class="badge amber">未配置密钥（跳过验签）</span>
             {% endif %}

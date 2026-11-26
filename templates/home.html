@@ -88,6 +88,12 @@ h1{margin:0;font-size:22px;font-weight:600;letter-spacing:-.2px}
         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
         设置
       </a>
+      {% if user.role == 'admin' %}
+      <a href="/admin">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+        管理
+      </a>
+      {% endif %}
     </nav>
     <div class="top-right">
       <div class="user">
@@ -117,11 +123,17 @@ h1{margin:0;font-size:22px;font-weight:600;letter-spacing:-.2px}
     </div>
   </div>
 
+  {% if not wechat_ready %}
+  <div style="background:#fffbeb;border:1px solid #fde68a;color:#92400e;font-size:13px;padding:10px 14px;border-radius:8px;margin-bottom:16px">
+    你的公众号尚未配置完成。<a href="/settings" style="color:#0b7a44;font-weight:500;text-decoration:underline">立即前往设置 →</a> 填写 AppID 和 AppSecret 后即可自动生成你的专属 MCP 与 Webhook 链接。
+  </div>
+  {% endif %}
+
   <div class="stats">
     <div class="stat"><div class="k">已推送</div><div class="v">{{ total }}</div><div class="s">篇</div></div>
     <div class="stat"><div class="k">最近一次</div><div class="v">{{ latest[:10] if latest and latest != '—' else '—' }}</div><div class="s">推送时间</div></div>
     <div class="stat"><div class="k">当前主题</div><div class="v">{{ theme_name }}</div><div class="s">可在设置里改</div></div>
-    <div class="stat"><div class="k">登录身份</div><div class="v" style="font-size:15px;line-height:1.4">{{ user.email or user.name }}</div><div class="s">{{ '固定密码' if user.auth_method == 'password' else 'Pocket ID' }}</div></div>
+    <div class="stat"><div class="k">登录身份</div><div class="v" style="font-size:15px;line-height:1.4">{{ user.username or user.name }}</div><div class="s">{{ 'Pocket ID' if user.auth_method == 'oidc' else '账号密码' }}{% if user.role == 'admin' %} · 管理员{% endif %}</div></div>
   </div>
 
   <div class="table">

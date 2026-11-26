@@ -74,8 +74,11 @@ def _sign(payload: bytes) -> str:
 def create_session(user: dict) -> str:
     """生成签名会话 cookie 值"""
     data = {
+        "uid": user.get("uid") or user.get("id") or "owner",
+        "username": user.get("username") or "admin",
+        "role": user.get("role") or "admin",
         "sub": user.get("sub"),
-        "name": user.get("name") or user.get("preferred_username") or user.get("email") or "用户",
+        "name": user.get("name") or user.get("display_name") or user.get("preferred_username") or user.get("email") or "用户",
         "email": user.get("email"),
         "picture": user.get("picture"),
         "auth_method": user.get("auth_method") or "oidc",
@@ -98,6 +101,8 @@ def read_session(value: Optional[str]) -> Optional[dict]:
         return None
     if int(data.get("exp", 0)) < time.time():
         return None
+    data.setdefault("uid", "owner")
+    data.setdefault("role", "admin")
     data.setdefault("auth_method", "oidc")
     return data
 

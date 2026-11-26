@@ -1,5 +1,5 @@
 """
-关联 Notion Database 信息聚合与缓存
+关联 Notion Database 信息聚合与缓存（按 user_id 隔离）
 
 - 读取关联数据库元信息（标题、属性结构、链接）与原始文章列表
 - 聚合基础统计（总数、状态分布、最近编辑时间）
@@ -15,7 +15,8 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Optional
 
-from .notion_source import NotionError, NotionSource
+from . import tenant
+from .notion_source import NotionSource
 
 logger = logging.getLogger(__name__)
 
@@ -23,19 +24,32 @@ DATA_DIR = Path(os.getenv("DATA_DIR", "/app/data"))
 CACHE_PATH = DATA_DIR / "notion_db_cache.json"
 DEFAULT_TTL = int(os.getenv("NOTION_CACHE_TTL", "300"))
 
-_mem_cache: Optional[dict[str, Any]] = None
-_fetch_lock: Optional[asyncio.Lock] = None
+_mem_caches: dict[str, dict[str, Any]] = {}
+_fetch_locks: dict[str, asyncio.Lock] = {}
 
 
-def _get_lock() -> asyncio.Lock:
-    global _fetch_lock
-    if _fetch_lock is None:
-        _fetch_lock = asyncio.Lock()
-    return _fetch_lock
+def _get_lock(user_id: str) -> asyncio.Lock:
+    lock = _fetch_locks.get(user_id)
+    if lock is None:
+        lock = asyncio.Lock()
+        _fetch_locks[user_id] = lock
+    return lock
 
 
-def get_database_id() -> str:
-    return (os.getenv("NOTION_DB_ID") or os.getenv("NOTION_DATABASE_ID") or "").strip()
+def _cache_path_for(user_id: str) -> Path:
+    if user_id == tenant.OWNER_ID:
+        return CACHE_PATH
+    return CACHE_PATH.parent / f"notion_db_cache_{user_id}.json"
+
+
+def get_database_id(user_id: str = tenant.OWNER_ID) -> str:
+    nt = (tenant.get_tenant_config(user_id).get("notion") or {})
+    db_id = (nt.get("db_id") or "").strip()
+    if db_id:
+        return db_id
+    if user_id == tenant.OWNER_ID:
+        return (os.getenv("NOTION_DB_ID") or os.getenv("NOTION_DATABASE_ID") or "").strip()
+    return ""
 
 
 def normalize_id(raw: Optional[str]) -> str:
@@ -48,7 +62,6 @@ def _extract_plain(rich_list: Optional[list[dict]]) -> str:
 
 def _extract_title(page: dict) -> str:
     props = page.get("properties") or {}
-    # 优先取名为「标题」的字段，其次任意 type == "title" 的字段
     named = NotionSource.prop_text(page, "标题")
     if named:
         return str(named).strip()
@@ -84,7 +97,7 @@ def _fmt_iso(ts: Optional[str]) -> str:
     return ts[:16].replace("T", " ")
 
 
-def _parse_snapshot(db_meta: dict, pages: list[dict], truncated: bool) -> dict[str, Any]:
+def _parse_snapshot(db_meta: dict, pages: list[dict], truncated: bool, db_id: str) -> dict[str, Any]:
     db_title = _extract_plain(db_meta.get("title")) or "Notion 文章库"
     props_raw = db_meta.get("properties") or {}
     properties = [
@@ -123,7 +136,7 @@ def _parse_snapshot(db_meta: dict, pages: list[dict], truncated: bool) -> dict[s
         "fetched_at_ts": now_ts,
         "fetched_at": datetime.fromtimestamp(now_ts, tz=timezone.utc).astimezone().strftime("%Y-%m-%d %H:%M:%S"),
         "database": {
-            "id": db_meta.get("id") or get_database_id(),
+            "id": db_meta.get("id") or db_id,
             "title": db_title,
             "url": db_meta.get("url") or "",
             "created_time": _fmt_iso(db_meta.get("created_time")),
@@ -141,11 +154,12 @@ def _parse_snapshot(db_meta: dict, pages: list[dict], truncated: bool) -> dict[s
     }
 
 
-def _load_disk_cache() -> Optional[dict[str, Any]]:
-    if not CACHE_PATH.exists():
+def _load_disk_cache(user_id: str) -> Optional[dict[str, Any]]:
+    path = _cache_path_for(user_id)
+    if not path.exists():
         return None
     try:
-        data = json.loads(CACHE_PATH.read_text(encoding="utf-8"))
+        data = json.loads(path.read_text(encoding="utf-8"))
         if isinstance(data, dict) and "fetched_at_ts" in data and "database" in data:
             return data
     except Exception as e:
@@ -153,20 +167,23 @@ def _load_disk_cache() -> Optional[dict[str, Any]]:
     return None
 
 
-def _save_disk_cache(snapshot: dict[str, Any]) -> None:
+def _save_disk_cache(user_id: str, snapshot: dict[str, Any]) -> None:
+    path = _cache_path_for(user_id)
     try:
-        CACHE_PATH.parent.mkdir(parents=True, exist_ok=True)
-        tmp = CACHE_PATH.with_suffix(".json.tmp")
+        path.parent.mkdir(parents=True, exist_ok=True)
+        tmp = path.with_suffix(".json.tmp")
         tmp.write_text(json.dumps(snapshot, ensure_ascii=False, indent=2), encoding="utf-8")
-        tmp.replace(CACHE_PATH)
+        tmp.replace(path)
     except Exception as e:
         logger.warning("写入 Notion 数据库缓存失败: %s", e)
 
 
-def clear_cache() -> None:
-    """清空内存缓存（测试用）"""
-    global _mem_cache
-    _mem_cache = None
+def clear_cache(user_id: Optional[str] = None) -> None:
+    """清空内存缓存（测试或配置更新时使用）"""
+    if user_id is None:
+        _mem_caches.clear()
+    else:
+        _mem_caches.pop(user_id, None)
 
 
 def _decorate_meta(
@@ -193,72 +210,87 @@ def _decorate_meta(
     return out
 
 
+def _resolve_notion_creds(user_id: str, token: Optional[str], db_id: Optional[str]) -> tuple[str, str]:
+    nt = (tenant.get_tenant_config(user_id).get("notion") or {})
+    tok = (token if token is not None else (nt.get("token") or "")).strip()
+    did = (db_id if db_id is not None else (nt.get("db_id") or "")).strip()
+    if user_id == tenant.OWNER_ID:
+        if not tok:
+            tok = os.getenv("NOTION_TOKEN", "").strip()
+        if not did:
+            did = (os.getenv("NOTION_DB_ID") or os.getenv("NOTION_DATABASE_ID") or "").strip()
+    return tok, did
+
+
 async def get_database_snapshot(
     *,
+    user_id: str = tenant.OWNER_ID,
     force_refresh: bool = False,
     ttl: Optional[int] = None,
+    token: Optional[str] = None,
+    db_id: Optional[str] = None,
 ) -> dict[str, Any]:
-    """获取关联 Notion Database 快照（带内存+磁盘缓存与失败降级）"""
-    global _mem_cache
+    """获取指定租户关联 Notion Database 快照（带内存+磁盘缓存与失败降级）"""
     effective_ttl = DEFAULT_TTL if ttl is None else max(1, int(ttl))
-    token = os.getenv("NOTION_TOKEN", "").strip()
-    db_id = get_database_id()
+    tok, did = _resolve_notion_creds(user_id, token, db_id)
 
-    if not token or not db_id:
+    if not tok or not did:
         missing = []
-        if not token:
+        if not tok:
             missing.append("NOTION_TOKEN")
-        if not db_id:
+        if not did:
             missing.append("NOTION_DB_ID")
         return {
             "configured": False,
-            "error": f"缺少环境变量：{', '.join(missing)}",
-            "database": {"id": db_id, "title": "未关联", "url": "", "properties": []},
+            "error": f"尚未配置 Notion 数据源：{', '.join(missing)}",
+            "database": {"id": did, "title": "未关联", "url": "", "properties": []},
             "stats": {"total": 0, "truncated": False, "status_counts": {}, "status_breakdown": [], "latest_edited_time": ""},
             "items": [],
             "cache": {"hit": False, "stale": False, "age_seconds": 0, "ttl_seconds": effective_ttl, "expires_in_seconds": 0, "fetched_at": ""},
         }
 
-    # 先尝试读内存或磁盘缓存
-    if _mem_cache is None:
-        _mem_cache = _load_disk_cache()
+    cached = _mem_caches.get(user_id)
+    if cached is None:
+        cached = _load_disk_cache(user_id)
+        if cached is not None:
+            _mem_caches[user_id] = cached
 
     now = time.time()
     if (
         not force_refresh
-        and _mem_cache is not None
-        and normalize_id((_mem_cache.get("database") or {}).get("id")) == normalize_id(db_id)
-        and (now - float(_mem_cache.get("fetched_at_ts", 0))) < effective_ttl
+        and cached is not None
+        and normalize_id((cached.get("database") or {}).get("id")) == normalize_id(did)
+        and (now - float(cached.get("fetched_at_ts", 0))) < effective_ttl
     ):
-        return _decorate_meta(_mem_cache, cache_hit=True, ttl=effective_ttl)
+        return _decorate_meta(cached, cache_hit=True, ttl=effective_ttl)
 
-    # 加锁回源 Notion API，避免并发击穿
-    async with _get_lock():
+    async with _get_lock(user_id):
+        cached = _mem_caches.get(user_id)
         now = time.time()
         if (
             not force_refresh
-            and _mem_cache is not None
-            and normalize_id((_mem_cache.get("database") or {}).get("id")) == normalize_id(db_id)
-            and (now - float(_mem_cache.get("fetched_at_ts", 0))) < effective_ttl
+            and cached is not None
+            and normalize_id((cached.get("database") or {}).get("id")) == normalize_id(did)
+            and (now - float(cached.get("fetched_at_ts", 0))) < effective_ttl
         ):
-            return _decorate_meta(_mem_cache, cache_hit=True, ttl=effective_ttl)
+            return _decorate_meta(cached, cache_hit=True, ttl=effective_ttl)
 
         try:
-            source = NotionSource(token)
-            db_meta = await source.get_database(db_id)
+            source = NotionSource(tok)
+            db_meta = await source.get_database(did)
             pages, truncated = await source.query_database(
-                db_id,
+                did,
                 sorts=[{"timestamp": "last_edited_time", "direction": "descending"}],
             )
-            snapshot = _parse_snapshot(db_meta, pages, truncated)
-            _mem_cache = snapshot
-            _save_disk_cache(snapshot)
+            snapshot = _parse_snapshot(db_meta, pages, truncated, did)
+            _mem_caches[user_id] = snapshot
+            _save_disk_cache(user_id, snapshot)
             return _decorate_meta(snapshot, cache_hit=False, ttl=effective_ttl)
         except Exception as e:
-            logger.warning("拉取 Notion Database 失败: %s", e)
-            if _mem_cache is not None:
+            logger.warning("拉取 Notion Database 失败 (%s): %s", user_id, e)
+            if cached is not None and normalize_id((cached.get("database") or {}).get("id")) == normalize_id(did):
                 return _decorate_meta(
-                    _mem_cache,
+                    cached,
                     cache_hit=True,
                     stale=True,
                     error=f"实时同步失败，已展示上次缓存：{e}",
@@ -267,7 +299,7 @@ async def get_database_snapshot(
             return {
                 "configured": True,
                 "error": f"拉取 Notion Database 失败：{e}",
-                "database": {"id": db_id, "title": "加载失败", "url": "", "properties": []},
+                "database": {"id": did, "title": "加载失败", "url": "", "properties": []},
                 "stats": {"total": 0, "truncated": False, "status_counts": {}, "status_breakdown": [], "latest_edited_time": ""},
                 "items": [],
                 "cache": {"hit": False, "stale": False, "age_seconds": 0, "ttl_seconds": effective_ttl, "expires_in_seconds": 0, "fetched_at": ""},

@@ -1,0 +1,280 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>平台管理 · 发布台</title>
+<style>
+*{box-sizing:border-box}
+body{margin:0;background:#fafafa;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif;-webkit-font-smoothing:antialiased;color:#09090b}
+a{color:inherit;text-decoration:none}
+.top{background:#fff;border-bottom:1px solid #e4e4e7}
+.top-inner{max-width:1200px;margin:0 auto;padding:0 24px;height:56px;display:flex;align-items:center;gap:28px}
+.brand{display:flex;align-items:center;gap:9px}
+.mark{width:28px;height:28px;border-radius:7px;background:#07c160;display:flex;align-items:center;justify-content:center}
+.brand-name{font-size:14px;font-weight:600}
+nav{display:flex;align-items:center;gap:4px}
+nav a{display:inline-flex;align-items:center;gap:7px;height:32px;padding:0 11px;border-radius:7px;font-size:13px;font-weight:500;color:#71717a}
+nav a.active{background:#f4f4f5;color:#09090b}
+.top-right{margin-left:auto;display:flex;align-items:center;gap:10px}
+.user{display:flex;align-items:center;gap:8px;padding-left:10px;border-left:1px solid #e4e4e7;font-size:13px;color:#3f3f46}
+.avatar{width:26px;height:26px;border-radius:50%;background:#e4e4e7;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:600;color:#52525b;overflow:hidden}
+.avatar img{width:100%;height:100%;object-fit:cover}
+main{max-width:1200px;margin:0 auto;padding:28px 24px 44px}
+h1{margin:0;font-size:22px;font-weight:600;letter-spacing:-.2px}
+.sub{margin:5px 0 20px;font-size:13px;color:#71717a}
+.notice{background:#f0fdf5;border:1px solid #d5f2e3;color:#0b7a44;font-size:13px;padding:10px 14px;border-radius:7px;margin-bottom:16px}
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:20px}
+.stat{background:#fff;border:1px solid #e4e4e7;border-radius:9px;padding:14px 16px}
+.stat .k{font-size:12px;color:#71717a;margin-bottom:6px}
+.stat .v{font-size:22px;font-weight:600;line-height:1.15;font-variant-numeric:tabular-nums}
+.stat .s{font-size:11px;color:#a1a1aa;margin-top:5px}
+.card{background:#fff;border:1px solid #e4e4e7;border-radius:9px;margin-bottom:18px;overflow:hidden}
+.card-head{padding:14px 18px;border-bottom:1px solid #f4f4f5;display:flex;align-items:center;gap:8px}
+.card-head h2{margin:0;font-size:14px;font-weight:600}
+.card-head .n{margin-left:auto;font-size:12px;color:#a1a1aa}
+.card-body{padding:16px 18px}
+.card-foot{padding:12px 18px;border-top:1px solid #f4f4f5;display:flex;align-items:center;gap:10px}
+table{width:100%;border-collapse:collapse}
+th{text-align:left;font-size:12px;font-weight:500;color:#71717a;background:#fafafa;padding:9px 16px;border-bottom:1px solid #e4e4e7;white-space:nowrap}
+td{font-size:13px;padding:11px 16px;border-bottom:1px solid #f4f4f5;vertical-align:middle}
+tr:last-child td{border-bottom:none}
+.dim{color:#71717a;font-size:12px}
+.mono{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12px}
+.badge{display:inline-flex;align-items:center;border:1px solid #d5f2e3;background:#f0fdf5;color:#0b7a44;font-size:11px;font-weight:500;padding:2px 8px;border-radius:999px}
+.badge.gray{border-color:#e4e4e7;background:#fafafa;color:#52525b}
+.badge.red{border-color:#fecdd3;background:#fff1f2;color:#be123c}
+.badge.blue{border-color:#bfdbfe;background:#eff6ff;color:#1d4ed8}
+.btn{display:inline-flex;align-items:center;gap:6px;height:32px;padding:0 12px;border:1px solid #e4e4e7;border-radius:6px;background:#fff;font-size:12px;font-weight:500;color:#09090b;font-family:inherit;cursor:pointer}
+.btn:hover{background:#f4f4f5}
+.btn-danger{color:#be123c;border-color:#fecdd3}
+.btn-danger:hover{background:#fff1f2}
+.btn-primary{background:#07c160;border:none;color:#fff;height:36px;padding:0 18px;font-size:13px}
+.btn-primary:hover{background:#06a852}
+label.lbl{display:block;font-size:13px;font-weight:500;margin-bottom:6px}
+input[type=text],input[type=password],select{width:100%;height:36px;padding:0 11px;border:1px solid #e4e4e7;border-radius:6px;font-size:13px;color:#09090b;background:#fff;font-family:inherit}
+input[type=text]:focus,input[type=password]:focus,select:focus{outline:none;border-color:#07c160}
+.field{margin-bottom:12px}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.hint{margin:6px 0 0;font-size:12px;color:#a1a1aa}
+.switch{position:relative;display:inline-flex;align-items:center;gap:8px;cursor:pointer}
+.switch input{position:absolute;opacity:0;width:0;height:0}
+.switch .track{width:36px;height:20px;border-radius:999px;background:#e4e4e7;position:relative;transition:background .15s}
+.switch .thumb{position:absolute;top:2px;left:2px;width:16px;height:16px;border-radius:50%;background:#fff;box-shadow:0 1px 2px rgba(0,0,0,.2);transition:transform .15s}
+.switch input:checked + .track{background:#07c160}
+.switch input:checked + .track .thumb{transform:translateX(16px)}
+@media (max-width:900px){
+  .stats{grid-template-columns:repeat(2,1fr)}
+  .two{grid-template-columns:1fr}
+  .hide-sm{display:none}
+  .top-inner{gap:12px;padding:0 14px}
+  .brand-name{display:none}
+}
+</style>
+</head>
+<body>
+
+<div class="top">
+  <div class="top-inner">
+    <div class="brand">
+      <span class="mark">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m22 2-7 20-4-9-9-4Z"/><path d="M22 2 11 13"/></svg>
+      </span>
+      <span class="brand-name">公众号发布台</span>
+    </div>
+    <nav>
+      <a href="/">文章</a>
+      <a href="/source">数据源</a>
+      <a href="/flow">流程</a>
+      <a href="/usage">用量</a>
+      <a href="/settings">设置</a>
+      <a class="active" href="/admin">管理</a>
+    </nav>
+    <div class="top-right">
+      <div class="user">
+        <span class="avatar">{% if user.picture %}<img src="{{ user.picture }}" alt="">{% else %}{{ (user.name or '?')[:1] }}{% endif %}</span>
+        <span>{{ user.name }}</span>
+        <a href="/logout" title="退出登录" aria-label="退出登录" style="display:inline-flex;color:#a1a1aa">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+        </a>
+      </div>
+    </div>
+  </div>
+</div>
+
+<main>
+  <h1>平台管理后台</h1>
+  <p class="sub">多租户用户权限管控、开放注册开关与全站统一 AI 绘图引擎配置</p>
+
+  {% if saved %}<div class="notice">平台配置已保存并立即生效。</div>{% endif %}
+  {% if msg %}<div class="notice">{{ msg }}</div>{% endif %}
+
+  <div class="stats">
+    <div class="stat"><div class="k">注册用户</div><div class="v">{{ total_users }}</div><div class="s">正常启用 {{ active_users }} 人</div></div>
+    <div class="stat"><div class="k">全站文章</div><div class="v">{{ total_articles }}</div><div class="s">所有租户汇总</div></div>
+    <div class="stat"><div class="k">AI 累计生图</div><div class="v">{{ site_totals.images }}</div><div class="s">总调用 {{ site_totals.calls }} 次</div></div>
+    <div class="stat"><div class="k">AI 消耗 Token</div><div class="v">{{ "{:,}".format(site_totals.total_tokens) }}</div><div class="s">由平台统一供给</div></div>
+  </div>
+
+  <section class="card">
+    <div class="card-head">
+      <h2>租户列表与权限管控</h2>
+      <span class="n">停用后用户无法登录，专属 MCP 与 Webhook 立即失效</span>
+    </div>
+    <div style="overflow-x:auto">
+      <table>
+        <thead>
+          <tr>
+            <th>用户</th>
+            <th>状态</th>
+            <th>配置就绪</th>
+            <th>文章 / 生图</th>
+            <th class="hide-sm">注册时间</th>
+            <th class="hide-sm">最近登录</th>
+            <th style="text-align:right">管控操作</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for u in users %}
+          <tr>
+            <td>
+              <div style="font-weight:500">
+                {{ u.display_name }}
+                {% if u.role == 'admin' %}<span class="badge blue" style="margin-left:4px">管理员</span>{% endif %}
+              </div>
+              <div class="dim mono">@{{ u.username }} · {{ u.id }}</div>
+            </td>
+            <td>
+              {% if u.status == 'active' %}
+              <span class="badge">正常使用</span>
+              {% else %}
+              <span class="badge red">已停用</span>
+              {% endif %}
+            </td>
+            <td>
+              <span class="badge {{ '' if u.wechat_ready else 'gray' }}">公众号</span>
+              <span class="badge {{ '' if u.notion_ready else 'gray' }}">Notion</span>
+              <span class="badge {{ '' if u.seed_ready else 'gray' }}">专属链接</span>
+            </td>
+            <td>
+              <span>{{ u.articles }} 篇</span>
+              <span class="dim"> / {{ u.ai_images }} 图</span>
+            </td>
+            <td class="dim hide-sm">{{ u.created_at }}</td>
+            <td class="dim hide-sm">{{ u.last_login_at }}</td>
+            <td style="text-align:right">
+              {% if u.id == 'owner' %}
+              <span class="dim">主管理员不可停用</span>
+              {% elif u.status == 'active' %}
+              <form method="post" action="/admin/users/{{ u.id }}/status" style="display:inline">
+                <input type="hidden" name="status" value="disabled">
+                <button type="submit" class="btn btn-danger">停用账号</button>
+              </form>
+              {% else %}
+              <form method="post" action="/admin/users/{{ u.id }}/status" style="display:inline">
+                <input type="hidden" name="status" value="active">
+                <button type="submit" class="btn">恢复启用</button>
+              </form>
+              {% endif %}
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <form method="post" action="/admin/platform">
+    <section class="card">
+      <div class="card-head">
+        <h2>注册策略与全站 AI 绘图引擎</h2>
+        <label class="switch" style="margin-left:auto">
+          <span style="font-size:12px;color:#71717a">开放新用户注册</span>
+          <input type="checkbox" name="allow_registration" {% if gcfg.allow_registration %}checked{% endif %}>
+          <span class="track"><span class="thumb"></span></span>
+        </label>
+      </div>
+      <div class="card-body">
+        <p class="hint" style="margin:0 0 14px">平台统一配置文生文与生图模型接口；租户在自己设置页仅选择是否启用及风格偏好，不接触平台 API Key。</p>
+
+        <div class="field">
+          <label class="lbl" for="ai_base_url">Base URL</label>
+          <input id="ai_base_url" type="text" name="ai_base_url" value="{{ gcfg.ai_images.base_url }}" placeholder="https://api.example.com/v1">
+        </div>
+
+        <div class="field">
+          <label class="lbl" for="ai_api_key">平台 AI API Key {% if ai_key_set %}<span class="badge">已设置</span>{% endif %}</label>
+          <input id="ai_api_key" type="password" name="ai_api_key" autocomplete="new-password" placeholder="{% if ai_key_set %}已设置，留空保持不变，输入新值可更新{% else %}sk-...{% endif %}">
+          <p class="hint">加密存于服务端 data/config.json，仅支持更新、绝不回显。</p>
+        </div>
+
+        <div class="two">
+          <div class="field">
+            <label class="lbl" for="ai_text_model">文生文模型</label>
+            <input id="ai_text_model" type="text" name="ai_text_model" value="{{ gcfg.ai_images.text_model }}" placeholder="gpt-6.1-sol">
+          </div>
+          <div class="field">
+            <label class="lbl" for="ai_image_model">生图模型</label>
+            <input id="ai_image_model" type="text" name="ai_image_model" value="{{ gcfg.ai_images.image_model }}" placeholder="gpt-5.6-luna">
+          </div>
+        </div>
+
+        <div class="two">
+          <div class="field">
+            <label class="lbl" for="ai_image_api">生图方式</label>
+            <select id="ai_image_api" name="ai_image_api">
+              <option value="auto" {% if gcfg.ai_images.image_api == 'auto' %}selected{% endif %}>自动（推荐）</option>
+              <option value="images" {% if gcfg.ai_images.image_api == 'images' %}selected{% endif %}>images/generations</option>
+              <option value="responses" {% if gcfg.ai_images.image_api == 'responses' %}selected{% endif %}>responses + image_generation</option>
+            </select>
+          </div>
+          <div class="field">
+            <label class="lbl" for="ai_max_width">出图压缩宽度</label>
+            <input id="ai_max_width" type="text" name="ai_max_width" value="{{ gcfg.ai_images.max_width }}" placeholder="1200">
+          </div>
+        </div>
+
+        <div class="two">
+          <div class="field">
+            <label class="lbl" for="ai_cover_size">封面尺寸</label>
+            <input id="ai_cover_size" type="text" name="ai_cover_size" value="{{ gcfg.ai_images.cover_size }}">
+          </div>
+          <div class="field">
+            <label class="lbl" for="ai_illustration_size">插图尺寸</label>
+            <input id="ai_illustration_size" type="text" name="ai_illustration_size" value="{{ gcfg.ai_images.illustration_size }}">
+          </div>
+        </div>
+      </div>
+      <div class="card-foot">
+        <button type="submit" class="btn btn-primary">保存平台配置</button>
+        <button type="button" class="btn" id="test-ai-btn">测通模型接口</button>
+        <span class="hint" id="test-ai-msg" style="margin:0">只拉模型列表，不消耗生图额度（先保存再测）</span>
+      </div>
+    </section>
+  </form>
+</main>
+
+<script>
+(function () {
+  var btn = document.getElementById('test-ai-btn');
+  var msg = document.getElementById('test-ai-msg');
+  if (btn) {
+    btn.addEventListener('click', async function () {
+      msg.textContent = '检测中…';
+      try {
+        var resp = await fetch('/settings/test-ai', { method: 'POST' });
+        var d = await resp.json();
+        if (!d.ok) { msg.textContent = '不通：' + (d.reason || '未知原因'); return; }
+        var bits = ['接口通，共 ' + d.models + ' 个模型'];
+        if (d.text_model_found === false) bits.push('⚠️ 文生文模型没找到');
+        if (d.image_model_found === false) bits.push('⚠️ 生图模型没找到');
+        msg.textContent = bits.join('；');
+      } catch (e) {
+        msg.textContent = '请求失败：' + e.message;
+      }
+    });
+  }
+})();
+</script>
+</body>
+</html>

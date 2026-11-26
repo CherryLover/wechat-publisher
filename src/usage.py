@@ -1,10 +1,5 @@
 """
-API 用量统计（SQLite，和文章库同一个库文件）
-
-每次调用大模型/生图接口都落一条记录：
-- step：plan（文生文规划）/ cover（封面）/ illustration-1..3
-- model、prompt/completion/total tokens、耗时、成败、错误信息
-- article_ref：本地文章 id 或 Notion page id，用来做「单篇用量」聚合
+API 用量统计（SQLite，支持按 user_id 隔离与全站汇总）
 """
 
 import os
@@ -19,6 +14,8 @@ DB_PATH = Path(os.getenv("DATA_DIR", "/app/data")) / "articles.db"
 def _connect() -> sqlite3.Connection:
     DB_PATH.parent.mkdir(parents=True, exist_ok=True)
     conn = sqlite3.connect(DB_PATH)
+    conn.execute("PRAGMA journal_mode=WAL")
+    conn.execute("PRAGMA busy_timeout=5000")
     conn.execute("""
         CREATE TABLE IF NOT EXISTS api_usage (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -33,11 +30,17 @@ def _connect() -> sqlite3.Connection:
             images INTEGER DEFAULT 0,
             duration_ms INTEGER DEFAULT 0,
             ok INTEGER DEFAULT 1,
-            error TEXT
+            error TEXT,
+            user_id TEXT DEFAULT 'owner'
         )
     """)
+    try:
+        conn.execute("ALTER TABLE api_usage ADD COLUMN user_id TEXT DEFAULT 'owner'")
+    except sqlite3.OperationalError:
+        pass
     conn.execute("CREATE INDEX IF NOT EXISTS idx_usage_ref ON api_usage(article_ref)")
     conn.execute("CREATE INDEX IF NOT EXISTS idx_usage_time ON api_usage(created_at)")
+    conn.execute("CREATE INDEX IF NOT EXISTS idx_usage_user ON api_usage(user_id)")
     return conn
 
 
@@ -54,6 +57,7 @@ def record(
     error: Optional[str] = None,
     article_ref: Optional[str] = None,
     article_title: Optional[str] = None,
+    user_id: str = "owner",
 ) -> None:
     """记一条调用。失败也不能影响主流程。"""
     try:
@@ -63,13 +67,13 @@ def record(
                 """INSERT INTO api_usage
                    (created_at, article_ref, article_title, step, model,
                     prompt_tokens, completion_tokens, total_tokens, images,
-                    duration_ms, ok, error)
-                   VALUES (?,?,?,?,?,?,?,?,?,?,?,?)""",
+                    duration_ms, ok, error, user_id)
+                   VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)""",
                 (
                     datetime.now().isoformat(), article_ref, article_title,
                     step, model, int(prompt_tokens or 0), int(completion_tokens or 0),
                     int(total_tokens or 0), int(images or 0), int(duration_ms or 0),
-                    1 if ok else 0, (error or "")[:400] or None,
+                    1 if ok else 0, (error or "")[:400] or None, user_id or "owner",
                 ),
             )
             conn.commit()
@@ -79,16 +83,26 @@ def record(
         pass
 
 
-def totals() -> dict:
-    """全局汇总"""
+def _user_where(user_id: Optional[str]) -> tuple[str, tuple]:
+    if user_id is None:
+        return "", ()
+    return "WHERE COALESCE(user_id, 'owner') = ?", (user_id,)
+
+
+def totals(user_id: Optional[str] = "owner") -> dict:
+    """汇总用量；user_id=None 时查全站"""
+    where, args = _user_where(user_id)
     conn = _connect()
     try:
-        row = conn.execute("""
+        row = conn.execute(
+            f"""
             SELECT COUNT(*), COALESCE(SUM(total_tokens),0),
                    COALESCE(SUM(prompt_tokens),0), COALESCE(SUM(completion_tokens),0),
                    COALESCE(SUM(images),0), COALESCE(SUM(ok=0),0)
-            FROM api_usage
-        """).fetchone()
+            FROM api_usage {where}
+            """,
+            args,
+        ).fetchone()
     finally:
         conn.close()
     return {
@@ -101,36 +115,55 @@ def totals() -> dict:
     }
 
 
-def by_step() -> list[dict]:
+def by_step(user_id: Optional[str] = "owner") -> list[dict]:
     """按步骤汇总（plan / cover / illustration）"""
+    where, args = _user_where(user_id)
     conn = _connect()
     try:
-        rows = conn.execute("""
+        rows = conn.execute(
+            f"""
             SELECT step, COUNT(*), COALESCE(SUM(total_tokens),0), COALESCE(SUM(images),0)
-            FROM api_usage GROUP BY step ORDER BY step
-        """).fetchall()
+            FROM api_usage {where} GROUP BY step ORDER BY step
+            """,
+            args,
+        ).fetchall()
     finally:
         conn.close()
     return [{"step": r[0], "calls": r[1], "tokens": r[2], "images": r[3]} for r in rows]
 
 
-def by_article(limit: int = 30) -> list[dict]:
+def by_article(limit: int = 30, user_id: Optional[str] = "owner") -> list[dict]:
     """单篇汇总：同一篇文章的所有调用加起来"""
     conn = _connect()
     try:
-        rows = conn.execute("""
-            SELECT article_ref,
-                   MAX(article_title),
-                   COUNT(*),
-                   COALESCE(SUM(total_tokens),0),
-                   COALESCE(SUM(images),0),
-                   MIN(created_at), MAX(created_at)
-            FROM api_usage
-            WHERE article_ref IS NOT NULL AND article_ref != ''
-            GROUP BY article_ref
-            ORDER BY MAX(created_at) DESC
-            LIMIT ?
-        """, (limit,)).fetchall()
+        if user_id is None:
+            rows = conn.execute(
+                """
+                SELECT article_ref, MAX(article_title), COUNT(*),
+                       COALESCE(SUM(total_tokens),0), COALESCE(SUM(images),0),
+                       MIN(created_at), MAX(created_at)
+                FROM api_usage
+                WHERE article_ref IS NOT NULL AND article_ref != ''
+                GROUP BY article_ref
+                ORDER BY MAX(created_at) DESC
+                LIMIT ?
+                """,
+                (limit,),
+            ).fetchall()
+        else:
+            rows = conn.execute(
+                """
+                SELECT article_ref, MAX(article_title), COUNT(*),
+                       COALESCE(SUM(total_tokens),0), COALESCE(SUM(images),0),
+                       MIN(created_at), MAX(created_at)
+                FROM api_usage
+                WHERE COALESCE(user_id, 'owner') = ? AND article_ref IS NOT NULL AND article_ref != ''
+                GROUP BY article_ref
+                ORDER BY MAX(created_at) DESC
+                LIMIT ?
+                """,
+                (user_id, limit),
+            ).fetchall()
     finally:
         conn.close()
     return [
@@ -144,14 +177,18 @@ def by_article(limit: int = 30) -> list[dict]:
     ]
 
 
-def recent(limit: int = 50) -> list[dict]:
+def recent(limit: int = 50, user_id: Optional[str] = "owner") -> list[dict]:
+    where, args = _user_where(user_id)
     conn = _connect()
     try:
-        rows = conn.execute("""
+        rows = conn.execute(
+            f"""
             SELECT created_at, step, model, total_tokens, images, duration_ms, ok, error,
                    article_ref, article_title
-            FROM api_usage ORDER BY id DESC LIMIT ?
-        """, (limit,)).fetchall()
+            FROM api_usage {where} ORDER BY id DESC LIMIT ?
+            """,
+            (*args, limit),
+        ).fetchall()
     finally:
         conn.close()
     return [
