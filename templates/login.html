@@ -4,55 +4,56 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>登录 · 发布台</title>
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="alternate icon" href="/favicon.ico">
+<script src="/static/lucide.min.js"></script>
 <style>
 *{box-sizing:border-box}
-body{margin:0;background:#fafafa;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif;-webkit-font-smoothing:antialiased;color:#09090b}
+body{margin:0;background:#fafafa;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif;-webkit-font-smoothing:antialiased;color:#09090b;font-size:15px;line-height:1.6}
 a{color:#07c160;text-decoration:none}
 a:hover{text-decoration:underline}
 .wrap{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:40px 24px}
-.card-wrap{width:410px;max-width:100%}
-.brand{display:flex;flex-direction:column;align-items:center;margin-bottom:22px}
-.mark{width:44px;height:44px;border-radius:11px;background:#07c160;display:flex;align-items:center;justify-content:center;margin-bottom:14px}
-.brand-name{font-size:15px;font-weight:600}
-.brand-sub{font-size:13px;color:#71717a;margin-top:4px;text-align:center}
-.card{background:#fff;border:1px solid #e4e4e7;border-radius:10px;box-shadow:0 1px 2px rgba(0,0,0,.05);padding:26px 24px 22px}
-h1{margin:0 0 6px;font-size:17px;font-weight:600}
-.desc{margin:0 0 18px;font-size:13px;color:#71717a}
-.btn{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;height:40px;border:none;border-radius:7px;background:#07c160;color:#fff;font-size:14px;font-weight:500;font-family:inherit;cursor:pointer}
+.card-wrap{width:430px;max-width:100%}
+.brand{display:flex;flex-direction:column;align-items:center;margin-bottom:24px}
+.mark{width:50px;height:50px;border-radius:13px;background:#07c160;display:flex;align-items:center;justify-content:center;margin-bottom:14px;color:#fff}
+.brand-name{font-size:18px;font-weight:700}
+.brand-sub{font-size:14px;color:#71717a;margin-top:4px;text-align:center}
+.card{background:#fff;border:1px solid #e4e4e7;border-radius:12px;box-shadow:0 2px 6px rgba(0,0,0,.05);padding:28px 26px 24px}
+h1{margin:0 0 6px;font-size:21px;font-weight:700}
+.desc{margin:0 0 18px;font-size:14px;color:#71717a}
+.btn{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;height:44px;border:none;border-radius:8px;background:#07c160;color:#fff;font-size:15px;font-weight:600;font-family:inherit;cursor:pointer}
 .btn:hover{background:#06a852;text-decoration:none}
-.btn-sec{background:#fff;color:#09090b;border:1px solid #e4e4e7}
+.btn-sec{background:#fff;color:#09090b;border:1px solid #d4d4d8;font-weight:500}
 .btn-sec:hover{background:#f4f4f5}
-.field{margin-bottom:10px}
+.field{margin-bottom:12px}
 .pw-wrap{position:relative}
-.input{width:100%;height:40px;padding:0 12px;border:1px solid #e4e4e7;border-radius:7px;font-size:14px;color:#09090b;background:#fff;font-family:inherit}
-.pw-wrap .input{padding-right:40px}
-.input:focus{outline:none;border-color:#07c160}
-.pw-eye{position:absolute;top:50%;right:6px;transform:translateY(-50%);width:30px;height:30px;border:none;border-radius:6px;background:transparent;color:#71717a;display:inline-flex;align-items:center;justify-content:center;cursor:pointer;padding:0}
+.input{width:100%;height:42px;padding:0 13px;border:1px solid #d4d4d8;border-radius:8px;font-size:15px;color:#09090b;background:#fff;font-family:inherit}
+.pw-wrap .input{padding-right:42px}
+.input:focus{outline:none;border-color:#07c160;box-shadow:0 0 0 3px rgba(7,193,96,.12)}
+.pw-eye{position:absolute;top:50%;right:7px;transform:translateY(-50%);width:32px;height:32px;border:none;border-radius:6px;background:transparent;color:#71717a;display:inline-flex;align-items:center;justify-content:center;cursor:pointer;padding:0}
 .pw-eye:hover{background:#f4f4f5;color:#09090b}
 .pw-eye:focus-visible{outline:2px solid #07c160;outline-offset:1px}
-.err{margin:0 0 12px;padding:9px 12px;border-radius:7px;background:#fef2f2;border:1px solid #fecaca;color:#b91c1c;font-size:12px;line-height:1.5}
-.warn{margin:0 0 12px;padding:9px 12px;border-radius:7px;background:#fffbeb;border:1px solid #fde68a;color:#92400e;font-size:12px;line-height:1.5}
-.divider{display:flex;align-items:center;gap:10px;margin:16px 0}
+.err{margin:0 0 14px;padding:10px 13px;border-radius:8px;background:#fef2f2;border:1px solid #fecaca;color:#b91c1c;font-size:14px;line-height:1.5}
+.warn{margin:0 0 14px;padding:10px 13px;border-radius:8px;background:#fffbeb;border:1px solid #fde68a;color:#92400e;font-size:14px;line-height:1.5}
+.divider{display:flex;align-items:center;gap:10px;margin:18px 0}
 .divider span.line{flex:1;height:1px;background:#e4e4e7}
-.divider span.txt{font-size:11px;color:#a1a1aa}
-.row-link{margin-top:14px;display:flex;align-items:center;justify-content:space-between;font-size:12px;color:#71717a}
-.foot{margin-top:16px;padding-top:14px;border-top:1px solid #f4f4f5;display:flex;align-items:center;gap:7px;font-size:11px;color:#a1a1aa}
+.divider span.txt{font-size:12px;color:#a1a1aa}
+.row-link{margin-top:16px;display:flex;align-items:center;justify-content:space-between;font-size:14px;color:#71717a}
+.foot{margin-top:18px;padding-top:14px;border-top:1px solid #f4f4f5;display:flex;align-items:center;gap:8px;font-size:13px;color:#71717a}
 </style>
 </head>
 <body>
 <div class="wrap">
   <div class="card-wrap">
     <div class="brand">
-      <span class="mark">
-        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m22 2-7 20-4-9-9-4Z"/><path d="M22 2 11 13"/></svg>
-      </span>
+      <span class="mark"><i data-lucide="send" style="width:24px;height:24px"></i></span>
       <div class="brand-name">公众号发布台</div>
       <div class="brand-sub">Notion / MCP 一键排版推送到公众号草稿箱</div>
     </div>
 
     <div class="card">
       <h1>登录</h1>
-      <p class="desc">登录后可配置你的公众号、专属 MCP 与 Notion Webhook。</p>
+      <p class="desc">登录后自动保持 7 天登录态并持续安全续期。</p>
 
       {% if pw_error %}
       <div class="err">{{ pw_error }}</div>
@@ -65,8 +66,8 @@ h1{margin:0 0 6px;font-size:17px;font-weight:600}
         <div class="field pw-wrap">
           <input class="input" id="pw-input" type="password" name="password" placeholder="输入登录密码" autocomplete="current-password" required>
           <button type="button" class="pw-eye" id="pw-toggle" aria-label="显示密码" aria-pressed="false" title="显示/隐藏密码">
-            <svg id="eye-open" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg>
-            <svg id="eye-closed" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:none"><path d="M9.88 9.88a3 3 0 1 0 4.24 4.24"/><path d="M10.73 5.08A10.43 10.43 0 0 1 12 5c7 0 10 7 10 7a13.16 13.16 0 0 1-1.67 2.68"/><path d="M6.61 6.61A13.526 13.526 0 0 0 2 12s3 7 10 7a9.74 9.74 0 0 0 5.39-1.61"/><line x1="2" x2="22" y1="2" y2="22"/></svg>
+            <span id="eye-open" style="display:inline-flex"><i data-lucide="eye" style="width:18px;height:18px"></i></span>
+            <span id="eye-closed" style="display:none"><i data-lucide="eye-off" style="width:18px;height:18px"></i></span>
           </button>
         </div>
         <button type="submit" class="btn">登录</button>
@@ -85,7 +86,7 @@ h1{margin:0 0 6px;font-size:17px;font-weight:600}
       <div class="divider"><span class="line"></span><span class="txt">管理员快捷通道</span><span class="line"></span></div>
       {% if authorize_url %}
       <a class="btn btn-sec" href="{{ authorize_url }}">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/><path d="m9 12 2 2 4-4"/></svg>
+        <i data-lucide="shield-check" style="width:18px;height:18px"></i>
         使用 Pocket ID 登录
       </a>
       {% elif oidc_error %}
@@ -94,28 +95,28 @@ h1{margin:0 0 6px;font-size:17px;font-weight:600}
       {% endif %}
 
       <div class="foot">
-        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#a1a1aa" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
-        多租户数据与链接完全隔离 · 密钥加密存储
+        <i data-lucide="lock" style="width:15px;height:15px;flex:none;color:#71717a"></i>
+        多租户数据隔离 · 凭据 AES-256-GCM 加密 · 免密续期 7 天
       </div>
     </div>
   </div>
 </div>
 
 <script>
+if (window.lucide) lucide.createIcons();
 (function () {
-  var input = document.getElementById('pw-input');
+  var inp = document.getElementById('pw-input');
   var btn = document.getElementById('pw-toggle');
   var openIcon = document.getElementById('eye-open');
   var closedIcon = document.getElementById('eye-closed');
-  if (!input || !btn) return;
+  if (!inp || !btn) return;
   btn.addEventListener('click', function () {
-    var showing = input.type === 'text';
-    input.type = showing ? 'password' : 'text';
-    btn.setAttribute('aria-pressed', showing ? 'false' : 'true');
-    btn.setAttribute('aria-label', showing ? '显示密码' : '隐藏密码');
-    openIcon.style.display = showing ? '' : 'none';
-    closedIcon.style.display = showing ? 'none' : '';
-    input.focus();
+    var show = inp.type === 'password';
+    inp.type = show ? 'text' : 'password';
+    btn.setAttribute('aria-pressed', show ? 'true' : 'false');
+    btn.setAttribute('aria-label', show ? '隐藏密码' : '显示密码');
+    if (openIcon) openIcon.style.display = show ? 'none' : 'inline-flex';
+    if (closedIcon) closedIcon.style.display = show ? 'inline-flex' : 'none';
   });
 })();
 </script>

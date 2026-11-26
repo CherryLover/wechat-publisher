@@ -16,11 +16,12 @@ import httpx
 from dotenv import load_dotenv
 from fastapi import Depends, FastAPI, File, HTTPException, Request, UploadFile
 from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, Response
+from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from pydantic import BaseModel
 from starlette.types import ASGIApp, Receive, Scope, Send
 
-from . import article, imagegen, tenant
+from . import article, imagegen, oidc, tenant
 from .auth import (
     AUTH_TOKEN,
     create_preview_token,
@@ -44,6 +45,7 @@ from .web import current_user, router as web_router
 from .wechat import WechatAPI
 
 UPLOAD_DIR = Path(os.getenv("UPLOAD_DIR", "/app/uploads"))
+STATIC_DIR = Path(__file__).parent.parent / "static"
 _WX_IMG_HOSTS = ("mmbiz.qpic.cn", "mmbiz.qlogo.cn", "wx.qlogo.cn")
 _WX_IMG_SRC_RE = re.compile(r'(<img\b[^>]*\bsrc=["\'])(https?://[^"\']+)(["\'][^>]*>)', re.IGNORECASE)
 
@@ -92,6 +94,66 @@ app = FastAPI(
     title="微信公众号发布服务",
     lifespan=lifespan,
 )
+
+if STATIC_DIR.exists():
+    app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
+
+
+@app.get("/favicon.ico", include_in_schema=False)
+async def favicon_ico():
+    p = STATIC_DIR / "favicon.ico"
+    if p.exists():
+        return FileResponse(p, media_type="image/x-icon")
+    raise HTTPException(status_code=404)
+
+
+@app.get("/favicon.svg", include_in_schema=False)
+async def favicon_svg():
+    p = STATIC_DIR / "favicon.svg"
+    if p.exists():
+        return FileResponse(p, media_type="image/svg+xml")
+    raise HTTPException(status_code=404)
+
+
+@app.middleware("http")
+async def sliding_session_middleware(request: Request, call_next):
+    """7 天会话滑动续期：登录态超过刷新阈值时自动续签 cookie"""
+    resp = await call_next(request)
+    raw = request.cookies.get(oidc.SESSION_COOKIE)
+    if not raw or not oidc.has_session_secret():
+        return resp
+    sess = oidc.read_session(raw)
+    if not sess or not oidc.should_refresh_session(sess):
+        return resp
+    # 如果本次响应已经显式设置或删除了 session cookie（如登出），不覆盖
+    existing_cookies = [v.lower() for v in resp.headers.getlist("set-cookie")]
+    if any(c.startswith(f"{oidc.SESSION_COOKIE.lower()}=") for c in existing_cookies):
+        return resp
+    uid = sess.get("uid") or tenant.OWNER_ID
+    u = tenant.get_user_by_id(uid)
+    if not u or u.get("status") != "active":
+        return resp
+    proto = request.headers.get("x-forwarded-proto", "").split(",")[0].strip().lower()
+    is_https = proto == "https" or request.url.scheme == "https"
+    payload = {
+        **sess,
+        "id": u["id"],
+        "uid": u["id"],
+        "username": u["username"],
+        "name": u["display_name"] or sess.get("name") or u["username"],
+        "role": u["role"],
+    }
+    resp.set_cookie(
+        oidc.SESSION_COOKIE,
+        oidc.create_session(payload),
+        max_age=oidc.SESSION_TTL,
+        httponly=True,
+        samesite="lax",
+        secure=is_https,
+        path="/",
+    )
+    return resp
+
 
 app.include_router(notion_router)
 app.include_router(web_router)

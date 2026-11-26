@@ -31,6 +31,7 @@ from src import (
     oidc,
     tenant,
     usage,
+    web,
 )
 
 
@@ -128,7 +129,7 @@ class TestMultiTenantEndToEnd(unittest.TestCase):
             follow_redirects=False,
         )
         self.assertEqual(r.status_code, 303)
-        self.assertEqual(r.headers["location"], "/settings?welcome=1")
+        self.assertEqual(r.headers["location"], "/onboarding?welcome=1")
         cookie = r.cookies.get(oidc.SESSION_COOKIE)
         self.assertIsNotNone(cookie)
         uid = oidc.read_session(cookie)["uid"]
@@ -152,18 +153,19 @@ class TestMultiTenantEndToEnd(unittest.TestCase):
         self.assertEqual(ua0["webhook_token"], "")
         self.assertIn("待配置", self.client.get("/settings", cookies=ck_a).text)
 
-        # 配置微信 AppID + AppSecret -> 自动生成种子并派生专属链接
-        r_save = self.client.post(
-            "/settings",
-            data={
-                "theme": "lapis",
-                "wx_appid": "wx_alice_01",
-                "wx_appsecret": "sec_alice_01",
-                "wx_author": "Alice",
-            },
-            cookies=ck_a,
-            follow_redirects=False,
-        )
+        # 配置微信 AppID + AppSecret -> 必须通过微信连通性校验，完成后自动生成种子并派生专属链接
+        with patch.object(web.WechatAPI, "get_access_token", AsyncMock(return_value="tok_a")):
+            r_save = self.client.post(
+                "/settings",
+                data={
+                    "theme": "lapis",
+                    "wx_appid": "wx_alice_01",
+                    "wx_appsecret": "sec_alice_01",
+                    "wx_author": "Alice",
+                },
+                cookies=ck_a,
+                follow_redirects=False,
+            )
         self.assertEqual(r_save.status_code, 303)
         self.assertIn("seed_created=1", r_save.headers["location"])
 
@@ -221,12 +223,13 @@ class TestMultiTenantEndToEnd(unittest.TestCase):
 
     def test_admin_permissions_and_user_disable_enforcement(self):
         uid_a, ck_a = self._register_and_login("charlie")
-        self.client.post(
-            "/settings",
-            data={"theme": "default", "wx_appid": "wx_c", "wx_appsecret": "sec_c"},
-            cookies=ck_a,
-            follow_redirects=False,
-        )
+        with patch.object(web.WechatAPI, "get_access_token", AsyncMock(return_value="tok_c")):
+            self.client.post(
+                "/settings",
+                data={"theme": "default", "wx_appid": "wx_c", "wx_appsecret": "sec_c"},
+                cookies=ck_a,
+                follow_redirects=False,
+            )
         uc = tenant.get_user_by_id(uid_a)
 
         # 普通用户访问 /admin -> 403

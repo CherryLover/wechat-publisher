@@ -10,10 +10,12 @@ import asyncio
 import json
 import logging
 import os
+import re
 import time
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Optional
+from urllib.parse import urlparse
 
 from . import tenant
 from .notion_source import NotionSource
@@ -42,13 +44,34 @@ def _cache_path_for(user_id: str) -> Path:
     return CACHE_PATH.parent / f"notion_db_cache_{user_id}.json"
 
 
+_UUID_HEX_RE = re.compile(
+    r"([0-9a-fA-F]{32}|[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})"
+)
+
+
+def extract_database_id(raw: Optional[str]) -> str:
+    """从 Notion Database 链接或纯 ID 中提取 32 位数据库 ID（忽略 ?v= 视图参数）"""
+    s = (raw or "").strip()
+    if not s:
+        return ""
+    if s.startswith("http://") or s.startswith("https://"):
+        path = urlparse(s).path or ""
+        matches = _UUID_HEX_RE.findall(path)
+        if matches:
+            return matches[-1].replace("-", "").lower()
+    matches = _UUID_HEX_RE.findall(s)
+    if matches:
+        return matches[-1].replace("-", "").lower()
+    return s
+
+
 def get_database_id(user_id: str = tenant.OWNER_ID) -> str:
     nt = (tenant.get_tenant_config(user_id).get("notion") or {})
-    db_id = (nt.get("db_id") or "").strip()
+    db_id = extract_database_id(nt.get("db_id") or "")
     if db_id:
         return db_id
     if user_id == tenant.OWNER_ID:
-        return (os.getenv("NOTION_DB_ID") or os.getenv("NOTION_DATABASE_ID") or "").strip()
+        return extract_database_id(os.getenv("NOTION_DB_ID") or os.getenv("NOTION_DATABASE_ID") or "")
     return ""
 
 
@@ -213,12 +236,12 @@ def _decorate_meta(
 def _resolve_notion_creds(user_id: str, token: Optional[str], db_id: Optional[str]) -> tuple[str, str]:
     nt = (tenant.get_tenant_config(user_id).get("notion") or {})
     tok = (token if token is not None else (nt.get("token") or "")).strip()
-    did = (db_id if db_id is not None else (nt.get("db_id") or "")).strip()
+    did = extract_database_id(db_id if db_id is not None else (nt.get("db_id") or ""))
     if user_id == tenant.OWNER_ID:
         if not tok:
             tok = os.getenv("NOTION_TOKEN", "").strip()
         if not did:
-            did = (os.getenv("NOTION_DB_ID") or os.getenv("NOTION_DATABASE_ID") or "").strip()
+            did = extract_database_id(os.getenv("NOTION_DB_ID") or os.getenv("NOTION_DATABASE_ID") or "")
     return tok, did
 
 
@@ -304,3 +327,31 @@ async def get_database_snapshot(
                 "items": [],
                 "cache": {"hit": False, "stale": False, "age_seconds": 0, "ttl_seconds": effective_ttl, "expires_in_seconds": 0, "fetched_at": ""},
             }
+
+
+async def test_connection(token: str, raw_db_id: str) -> dict[str, Any]:
+    """即时校验 Notion Integration Token 与数据库链接/ID 连通性（不落盘、不写缓存）"""
+    tok = (token or "").strip()
+    did = extract_database_id(raw_db_id)
+    if not tok or not did:
+        return {"ok": False, "reason": "请先填写 Notion Token 与数据库链接（或 ID）"}
+    try:
+        source = NotionSource(tok)
+        db_meta = await source.get_database(did)
+        title = _extract_plain(db_meta.get("title")) or "未命名数据库"
+        props = list((db_meta.get("properties") or {}).keys())
+        return {
+            "ok": True,
+            "db_id": did,
+            "title": title,
+            "message": f"Notion 数据库「{title}」连接成功（{len(props)} 个属性字段）",
+        }
+    except Exception as e:
+        msg = str(e)
+        if "401" in msg or "unauthorized" in msg.lower():
+            tip = "Notion Integration Token 无效或已过期，请核对后重试"
+        elif "404" in msg or "object_not_found" in msg.lower():
+            tip = "未找到该数据库：请确认链接正确，且已在 Notion 数据库右上角 ··· → Connections 中授权你的 Integration"
+        else:
+            tip = f"连接 Notion 失败：{msg[:160]}"
+        return {"ok": False, "db_id": did, "reason": tip}

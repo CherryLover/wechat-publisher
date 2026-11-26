@@ -26,6 +26,7 @@ REDIRECT_URI = os.getenv("OIDC_REDIRECT_URI", "")
 SESSION_SECRET = os.getenv("SESSION_SECRET", "")
 SESSION_COOKIE = "wp_session"
 SESSION_TTL = int(os.getenv("SESSION_TTL", str(7 * 24 * 3600)))
+SESSION_REFRESH_INTERVAL = int(os.getenv("SESSION_REFRESH_INTERVAL", str(12 * 3600)))
 
 _STATE_TTL = 600
 _states: dict[str, dict] = {}
@@ -73,6 +74,7 @@ def _sign(payload: bytes) -> str:
 
 def create_session(user: dict) -> str:
     """生成签名会话 cookie 值"""
+    now = int(time.time())
     data = {
         "uid": user.get("uid") or user.get("id") or "owner",
         "username": user.get("username") or "admin",
@@ -82,10 +84,25 @@ def create_session(user: dict) -> str:
         "email": user.get("email"),
         "picture": user.get("picture"),
         "auth_method": user.get("auth_method") or "oidc",
-        "exp": int(time.time()) + SESSION_TTL,
+        "iat": now,
+        "exp": now + SESSION_TTL,
     }
     body = _b64(json.dumps(data, ensure_ascii=False).encode())
     return f"{body}.{_sign(body.encode())}"
+
+
+def should_refresh_session(sess: Optional[dict], now: Optional[float] = None) -> bool:
+    """判断已验证的会话是否需要滑动续期（默认超过 12 小时自动刷新）"""
+    if not sess:
+        return False
+    cur = time.time() if now is None else float(now)
+    iat = sess.get("iat")
+    if iat is None:
+        return True
+    try:
+        return (cur - float(iat)) >= SESSION_REFRESH_INTERVAL
+    except (TypeError, ValueError):
+        return True
 
 
 def read_session(value: Optional[str]) -> Optional[dict]:

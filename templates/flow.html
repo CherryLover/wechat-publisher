@@ -4,21 +4,24 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>流程拓扑 · 发布台</title>
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="alternate icon" href="/favicon.ico">
+<script src="/static/lucide.min.js"></script>
 <style>
 *{box-sizing:border-box}
-body{margin:0;background:#f8fafb;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif;-webkit-font-smoothing:antialiased;color:#09090b}
+body{margin:0;background:#f8fafb;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif;-webkit-font-smoothing:antialiased;color:#09090b;font-size:15px;line-height:1.6}
 a{color:inherit;text-decoration:none}
 .top{background:#fff;border-bottom:1px solid #e4e4e7}
-.top-inner{max-width:1280px;margin:0 auto;padding:0 24px;height:56px;display:flex;align-items:center;gap:28px}
-.brand{display:flex;align-items:center;gap:9px}
-.mark{width:28px;height:28px;border-radius:7px;background:#07c160;display:flex;align-items:center;justify-content:center}
-.brand-name{font-size:14px;font-weight:600}
+.top-inner{max-width:1280px;margin:0 auto;padding:0 24px;height:60px;display:flex;align-items:center;gap:24px}
+.brand{display:flex;align-items:center;gap:10px}
+.mark{width:32px;height:32px;border-radius:8px;background:#07c160;display:flex;align-items:center;justify-content:center;color:#fff}
+.brand-name{font-size:16px;font-weight:600}
 nav{display:flex;align-items:center;gap:4px}
-nav a{display:inline-flex;align-items:center;gap:7px;height:32px;padding:0 11px;border-radius:7px;font-size:13px;font-weight:500;color:#71717a}
+nav a{display:inline-flex;align-items:center;gap:7px;height:36px;padding:0 12px;border-radius:8px;font-size:14px;font-weight:500;color:#71717a}
 nav a.active{background:#f4f4f5;color:#09090b}
 .top-right{margin-left:auto;display:flex;align-items:center;gap:10px}
-.user{display:flex;align-items:center;gap:8px;padding-left:10px;border-left:1px solid #e4e4e7;font-size:13px;color:#3f3f46}
-.avatar{width:26px;height:26px;border-radius:50%;background:#e4e4e7;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:600;color:#52525b;overflow:hidden}
+.user{display:flex;align-items:center;gap:8px;padding-left:12px;border-left:1px solid #e4e4e7;font-size:14px;color:#3f3f46}
+.avatar{width:28px;height:28px;border-radius:50%;background:#e4e4e7;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:600;color:#52525b;overflow:hidden}
 .avatar img{width:100%;height:100%;object-fit:cover}
 
 main{max-width:1280px;margin:0 auto;padding:18px 24px 44px}
@@ -114,45 +117,25 @@ main{max-width:1280px;margin:0 auto;padding:18px 24px 44px}
 <div class="top">
   <div class="top-inner">
     <div class="brand">
-      <span class="mark">
-        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m22 2-7 20-4-9-9-4Z"/><path d="M22 2 11 13"/></svg>
-      </span>
-      <span class="brand-name">程序杂念 · 发布台</span>
+      <span class="mark"><i data-lucide="send" style="width:17px;height:17px"></i></span>
+      <span class="brand-name">公众号发布台</span>
     </div>
     <nav>
-      <a href="/">
-        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
-        文章
-      </a>
-      <a href="/source">
-        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M3 5v14a9 3 0 0 0 18 0V5"/><path d="M3 12a9 3 0 0 0 18 0"/></svg>
-        数据源
-      </a>
-      <a class="active" href="/flow">
-        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="5" cy="6" r="2"/><circle cx="19" cy="6" r="2"/><circle cx="19" cy="18" r="2"/><circle cx="5" cy="18" r="2"/><path d="M7 6h10M7 18h10M5 8v8M19 8v8"/></svg>
-        流程
-      </a>
-      <a href="/usage">
-        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 3v18h18"/><path d="M18 17V9"/><path d="M13 17V5"/><path d="M8 17v-3"/></svg>
-        用量
-      </a>
-      <a href="/settings">
-        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
-        设置
-      </a>
+      <a href="/"><i data-lucide="file-text" style="width:16px;height:16px"></i>文章</a>
+      <a href="/source"><i data-lucide="database" style="width:16px;height:16px"></i>数据源</a>
+      <a class="active" href="/flow"><i data-lucide="git-branch" style="width:16px;height:16px"></i>流程</a>
+      <a href="/usage"><i data-lucide="bar-chart-2" style="width:16px;height:16px"></i>用量</a>
+      <a href="/settings"><i data-lucide="settings" style="width:16px;height:16px"></i>设置</a>
       {% if user.role == 'admin' %}
-      <a href="/admin">
-        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
-        管理
-      </a>
+      <a href="/admin"><i data-lucide="shield" style="width:16px;height:16px"></i>管理</a>
       {% endif %}
     </nav>
     <div class="top-right">
       <div class="user">
         <span class="avatar">{% if user.picture %}<img src="{{ user.picture }}" alt="">{% else %}{{ (user.name or '?')[:1] }}{% endif %}</span>
         <span>{{ user.name }}</span>
-        <a href="/logout" title="退出登录" aria-label="退出登录" style="display:inline-flex;color:#a1a1aa">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+        <a href="/logout" title="退出登录" aria-label="退出登录" style="display:inline-flex;color:#71717a">
+          <i data-lucide="log-out" style="width:16px;height:16px"></i>
         </a>
       </div>
     </div>
@@ -455,5 +438,6 @@ main{max-width:1280px;margin:0 auto;padding:18px 24px 44px}
   setTimeout(drawEdges, 120);
 })();
 </script>
+<script>if (window.lucide) lucide.createIcons();</script>
 </body>
 </html>

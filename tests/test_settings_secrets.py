@@ -3,12 +3,13 @@
 import tempfile
 import unittest
 from pathlib import Path
-from unittest.mock import patch
+from unittest.mock import AsyncMock, patch
 
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
 from src import article, auth, config, oidc, tenant, usage, web
+from src.wechat import WechatAPI
 
 
 class TestSettingsSecretsWriteOnly(unittest.TestCase):
@@ -24,6 +25,7 @@ class TestSettingsSecretsWriteOnly(unittest.TestCase):
             patch.object(auth, "_TOKEN_DB_PATH", self.db_path),
             patch.object(usage, "DB_PATH", self.db_path),
             patch.object(oidc, "SESSION_SECRET", "unit-test-secret"),
+            patch.object(WechatAPI, "get_access_token", AsyncMock(return_value="fake_wx_token")),
         ]
         for p in self.patches:
             p.start()

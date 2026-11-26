@@ -148,13 +148,14 @@ class TestSourceAndFlowRoutes(unittest.TestCase):
             return_value={"aaaa1111": {"id": "local01", "updated_at": "2026-11-24T11:00:00", "published_at": "2026-11-24T11:00:00"}},
         )
         self.p_preview = patch.object(web, "create_preview_token", return_value={"token": "tok123"})
+        self.p_onboard = patch.object(tenant, "needs_onboarding", return_value=False)
         self.p_usage = patch.object(
             web.usage, "totals", return_value={"calls": 4, "images": 4, "total_tokens": 1200, "prompt_tokens": 800, "completion_tokens": 400, "errors": 0}
         )
         for p in (
             self.p_cfg, self.p_cache, self.p_db, self.p_art_db, self.p_tok_db,
             self.p_usage_db, self.p_secret, self.p_articles, self.p_src_map,
-            self.p_preview, self.p_usage,
+            self.p_preview, self.p_onboard, self.p_usage,
         ):
             p.start()
         notion_db.clear_cache()
@@ -166,7 +167,7 @@ class TestSourceAndFlowRoutes(unittest.TestCase):
     def tearDown(self):
         notion_db.clear_cache()
         for p in (
-            self.p_usage, self.p_preview, self.p_src_map, self.p_articles,
+            self.p_usage, self.p_onboard, self.p_preview, self.p_src_map, self.p_articles,
             self.p_secret, self.p_usage_db, self.p_tok_db, self.p_art_db,
             self.p_db, self.p_cache, self.p_cfg,
         ):

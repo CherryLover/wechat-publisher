@@ -3,6 +3,7 @@ Bark 推送通知（按租户配置读取）
 """
 
 import logging
+from typing import Optional
 
 import httpx
 
@@ -11,20 +12,27 @@ from . import tenant
 logger = logging.getLogger(__name__)
 
 
-async def send(title: str, body: str, level: str = "active", user_id: str = "owner") -> dict:
-    """发一条 Bark 通知。未启用或没填 key 时静默跳过"""
+async def send(
+    title: str,
+    body: str,
+    level: str = "active",
+    user_id: str = "owner",
+    bark_override: Optional[dict] = None,
+) -> dict:
+    """发一条 Bark 通知；传 bark_override 时用于保存前即时测试"""
     cfg = tenant.get_tenant_config(user_id)
     notify = cfg.get("notify") or {}
-    if not notify.get("enabled"):
+    if bark_override is None and not notify.get("enabled"):
         return {"ok": False, "reason": "notify_disabled"}
 
-    bark = notify.get("bark") or {}
-    key = (bark.get("key") or "").strip()
+    saved_bark = notify.get("bark") or {}
+    ov = bark_override or {}
+    key = (ov.get("key") or saved_bark.get("key") or "").strip()
     if not key:
         return {"ok": False, "reason": "no_device_key"}
 
-    server = (bark.get("server") or "https://api.day.app").strip().rstrip("/")
-    group = (bark.get("group") or "公众号发布").strip()
+    server = (ov.get("server") or saved_bark.get("server") or "https://api.day.app").strip().rstrip("/")
+    group = (ov.get("group") or saved_bark.get("group") or "公众号发布").strip()
 
     payload = {
         "title": title[:120],

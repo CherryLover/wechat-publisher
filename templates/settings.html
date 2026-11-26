@@ -4,75 +4,83 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>设置 · 发布台</title>
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="alternate icon" href="/favicon.ico">
+<script src="/static/lucide.min.js"></script>
 <style>
 *{box-sizing:border-box}
-body{margin:0;background:#fafafa;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif;-webkit-font-smoothing:antialiased;color:#09090b}
+body{margin:0;background:#fafafa;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif;-webkit-font-smoothing:antialiased;color:#09090b;font-size:15px;line-height:1.6}
 a{color:inherit;text-decoration:none}
 .top{background:#fff;border-bottom:1px solid #e4e4e7}
-.top-inner{max-width:1200px;margin:0 auto;padding:0 24px;height:56px;display:flex;align-items:center;gap:28px}
-.brand{display:flex;align-items:center;gap:9px}
-.mark{width:28px;height:28px;border-radius:7px;background:#07c160;display:flex;align-items:center;justify-content:center}
-.brand-name{font-size:14px;font-weight:600}
+.top-inner{max-width:1220px;margin:0 auto;padding:0 24px;height:60px;display:flex;align-items:center;gap:24px}
+.brand{display:flex;align-items:center;gap:10px}
+.mark{width:32px;height:32px;border-radius:8px;background:#07c160;display:flex;align-items:center;justify-content:center;color:#fff}
+.brand-name{font-size:16px;font-weight:600}
 nav{display:flex;align-items:center;gap:4px}
-nav a{display:inline-flex;align-items:center;gap:7px;height:32px;padding:0 11px;border-radius:7px;font-size:13px;font-weight:500;color:#71717a}
+nav a{display:inline-flex;align-items:center;gap:7px;height:36px;padding:0 12px;border-radius:8px;font-size:14px;font-weight:500;color:#71717a}
 nav a.active{background:#f4f4f5;color:#09090b}
 .top-right{margin-left:auto;display:flex;align-items:center;gap:10px}
-.user{display:flex;align-items:center;gap:8px;padding-left:10px;border-left:1px solid #e4e4e7;font-size:13px;color:#3f3f46}
-.avatar{width:26px;height:26px;border-radius:50%;background:#e4e4e7;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:600;color:#52525b;overflow:hidden}
+.user{display:flex;align-items:center;gap:8px;padding-left:12px;border-left:1px solid #e4e4e7;font-size:14px;color:#3f3f46}
+.avatar{width:28px;height:28px;border-radius:50%;background:#e4e4e7;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:600;color:#52525b;overflow:hidden}
 .avatar img{width:100%;height:100%;object-fit:cover}
-main{max-width:1200px;margin:0 auto;padding:26px 24px 44px}
-h1{margin:0;font-size:22px;font-weight:600;letter-spacing:-.2px}
-.sub{margin:5px 0 20px;font-size:13px;color:#71717a}
-.grid{display:grid;grid-template-columns:minmax(0,1fr) 392px;gap:20px;align-items:start}
-.card{background:#fff;border:1px solid #e4e4e7;border-radius:8px;box-shadow:0 1px 2px rgba(0,0,0,.05);margin-bottom:16px}
-.card-head{padding:16px 20px 13px;border-bottom:1px solid #f4f4f5}
-.card-head h2{margin:0;font-size:14px;font-weight:600;display:flex;align-items:center;gap:8px}
-.card-head p{margin:5px 0 0;font-size:13px;color:#71717a}
-.card-body{padding:16px 20px 18px}
-.card-foot{padding:12px 20px;border-top:1px solid #f4f4f5;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
-.themes{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+main{max-width:1220px;margin:0 auto;padding:28px 24px 52px}
+.page-head{display:flex;align-items:flex-end;justify-content:space-between;gap:16px;flex-wrap:wrap;margin-bottom:20px}
+h1{margin:0;font-size:25px;font-weight:700;letter-spacing:-.2px}
+.sub{margin:6px 0 0;font-size:14px;color:#71717a}
+.grid{display:grid;grid-template-columns:minmax(0,1fr) 410px;gap:22px;align-items:start}
+.card{background:#fff;border:1px solid #e4e4e7;border-radius:12px;box-shadow:0 1px 3px rgba(0,0,0,.04);margin-bottom:18px}
+.card-head{padding:18px 22px 15px;border-bottom:1px solid #f4f4f5}
+.card-head h2{margin:0;font-size:16px;font-weight:700;display:flex;align-items:center;gap:8px}
+.card-head p{margin:5px 0 0;font-size:14px;color:#71717a}
+.card-body{padding:18px 22px 20px}
+.card-foot{padding:14px 22px;border-top:1px solid #f4f4f5;display:flex;align-items:center;gap:12px;flex-wrap:wrap;background:#fafafa}
+.themes{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
 .theme-opt input{position:absolute;opacity:0;width:0;height:0}
-.theme-opt span.box{display:flex;align-items:center;gap:9px;padding:9px 11px;border:1px solid #e4e4e7;border-radius:7px;font-size:13px;color:#3f3f46;cursor:pointer}
-.theme-opt input:checked + span.box{border-color:#07c160;background:#f0fdf5;color:#09090b}
-.swatch{width:16px;height:16px;border-radius:4px;flex:none}
-label.lbl{display:flex;align-items:center;gap:8px;font-size:13px;font-weight:500;margin-bottom:6px}
-input[type=text],input[type=password],select{width:100%;height:36px;padding:0 11px;border:1px solid #e4e4e7;border-radius:6px;font-size:13px;color:#09090b;background:#fff;font-family:inherit}
-input[type=text]:focus,input[type=password]:focus,select:focus{outline:none;border-color:#07c160}
-.hint{margin:6px 0 0;font-size:12px;color:#a1a1aa;line-height:1.5}
-.field{margin-bottom:12px}
-.two{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.theme-opt span.box{display:flex;align-items:center;gap:9px;padding:10px 12px;border:1px solid #e4e4e7;border-radius:8px;font-size:14px;color:#3f3f46;cursor:pointer}
+.theme-opt input:checked + span.box{border-color:#07c160;background:#f0fdf5;color:#09090b;font-weight:600}
+.swatch{width:18px;height:18px;border-radius:5px;flex:none}
+label.lbl{display:flex;align-items:center;gap:8px;font-size:14px;font-weight:600;margin-bottom:7px}
+input[type=text],input[type=password],select{width:100%;height:42px;padding:0 12px;border:1px solid #d4d4d8;border-radius:8px;font-size:15px;color:#09090b;background:#fff;font-family:inherit}
+input[type=text]:focus,input[type=password]:focus,select:focus{outline:none;border-color:#07c160;box-shadow:0 0 0 3px rgba(7,193,96,.12)}
+.hint{margin:7px 0 0;font-size:13px;color:#71717a;line-height:1.55}
+.field{margin-bottom:14px}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:14px}
 .switch{position:relative;display:inline-flex;align-items:center;gap:8px;cursor:pointer}
 .switch input{position:absolute;opacity:0;width:0;height:0}
-.switch .track{width:36px;height:20px;border-radius:999px;background:#e4e4e7;position:relative;transition:background .15s}
-.switch .thumb{position:absolute;top:2px;left:2px;width:16px;height:16px;border-radius:50%;background:#fff;box-shadow:0 1px 2px rgba(0,0,0,.2);transition:transform .15s}
+.switch .track{width:42px;height:22px;border-radius:999px;background:#d4d4d8;position:relative;transition:background .15s}
+.switch .thumb{position:absolute;top:3px;left:3px;width:16px;height:16px;border-radius:50%;background:#fff;box-shadow:0 1px 2px rgba(0,0,0,.2);transition:transform .15s}
 .switch input:checked + .track{background:#07c160}
-.switch input:checked + .track .thumb{transform:translateX(16px)}
-.checks{display:flex;gap:14px;flex-wrap:wrap;align-items:center}
-.check{display:flex;align-items:center;gap:7px;font-size:13px;color:#3f3f46;cursor:pointer}
-.check input[type=checkbox]{width:16px;height:16px;accent-color:#07c160;margin:0}
-.check-inline{display:flex;align-items:center;gap:7px;flex-wrap:wrap;font-size:13px;color:#3f3f46}
-.num-inline{width:58px;height:28px;padding:0 8px;border:1px solid #e4e4e7;border-radius:6px;font-size:13px;color:#09090b;background:#fff;font-family:inherit;text-align:center}
+.switch input:checked + .track .thumb{transform:translateX(20px)}
+.checks{display:flex;gap:16px;flex-wrap:wrap;align-items:center}
+.check{display:flex;align-items:center;gap:8px;font-size:14px;color:#3f3f46;cursor:pointer}
+.check input[type=checkbox]{width:17px;height:17px;accent-color:#07c160;margin:0}
+.check-inline{display:flex;align-items:center;gap:7px;flex-wrap:wrap;font-size:14px;color:#3f3f46}
+.num-inline{width:62px;height:32px;padding:0 8px;border:1px solid #d4d4d8;border-radius:6px;font-size:14px;color:#09090b;background:#fff;font-family:inherit;text-align:center}
 .num-inline:focus{outline:none;border-color:#07c160}
-.btn{display:inline-flex;align-items:center;gap:6px;height:34px;padding:0 13px;border:1px solid #e4e4e7;border-radius:6px;background:#fff;font-size:13px;font-weight:500;color:#09090b;font-family:inherit;cursor:pointer}
+.btn{display:inline-flex;align-items:center;gap:7px;height:38px;padding:0 15px;border:1px solid #d4d4d8;border-radius:8px;background:#fff;font-size:14px;font-weight:500;color:#09090b;font-family:inherit;cursor:pointer}
 .btn:hover{background:#f4f4f5}
-.btn-primary{background:#07c160;border:none;color:#fff}
+.btn-primary{background:#07c160;border:none;color:#fff;font-weight:600}
 .btn-primary:hover{background:#06a852}
-.save-row{display:flex;align-items:center;gap:12px}
-.save-row .note{font-size:12px;color:#71717a}
-.preview-head{padding:12px 14px;border-bottom:1px solid #f4f4f5;display:flex;align-items:center;gap:8px}
-.badge{display:inline-flex;align-items:center;border:1px solid #d5f2e3;background:#f0fdf5;color:#0b7a44;font-size:11px;font-weight:500;padding:1px 7px;border-radius:999px}
+.save-row{display:flex;align-items:center;gap:14px}
+.save-row .note{font-size:13px;color:#71717a}
+.preview-head{padding:14px 16px;border-bottom:1px solid #f4f4f5;display:flex;align-items:center;gap:8px}
+.badge{display:inline-flex;align-items:center;border:1px solid #d5f2e3;background:#f0fdf5;color:#0b7a44;font-size:12px;font-weight:500;padding:2px 8px;border-radius:999px}
 .badge.gray{border-color:#e4e4e7;background:#fafafa;color:#52525b}
 .badge.amber{border-color:#fde68a;background:#fffbeb;color:#92400e}
-.preview-body{padding:12px 14px;background:#fafafa}
-.preview-body iframe{width:100%;min-height:1100px;border:1px solid #e4e4e7;border-radius:10px;background:#fff;display:block}
-.preview-foot{padding:0 14px 12px;font-size:11px;color:#a1a1aa;line-height:1.6}
-.notice{background:#f0fdf5;border:1px solid #d5f2e3;color:#0b7a44;font-size:13px;padding:10px 14px;border-radius:7px;margin-bottom:16px;line-height:1.5}
-.warn{background:#fffbeb;border:1px solid #fde68a;color:#92400e}
-.info-box{background:#eff6ff;border:1px solid #bfdbfe;color:#1e40af;font-size:12px;padding:10px 12px;border-radius:7px;margin-bottom:14px;line-height:1.6}
-.copy-row{display:flex;gap:8px;align-items:center}
-.copy-row input{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12px;background:#fafafa}
-pre.code{margin:10px 0 0;padding:10px 12px;background:#fafafa;border:1px solid #e4e4e7;border-radius:6px;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:11px;color:#3f3f46;overflow:auto;line-height:1.5}
-@media (max-width:1000px){.grid{grid-template-columns:1fr}.themes{grid-template-columns:repeat(2,1fr)}.two{grid-template-columns:1fr}}
+.preview-body{padding:14px;background:#fafafa}
+.preview-body iframe{width:100%;min-height:820px;border:1px solid #e4e4e7;border-radius:10px;background:#fff;display:block}
+.preview-foot{padding:0 16px 14px;font-size:13px;color:#71717a;line-height:1.6}
+.notice{background:#f0fdf5;border:1px solid #d5f2e3;color:#0b7a44;font-size:14px;padding:12px 16px;border-radius:9px;margin-bottom:18px;line-height:1.55}
+.warn{background:#fef2f2;border:1px solid #fecaca;color:#b91c1c}
+.info-box{background:#eff6ff;border:1px solid #bfdbfe;color:#1e40af;font-size:13px;padding:12px 14px;border-radius:8px;margin-bottom:14px;line-height:1.6}
+.status-inline{font-size:14px;font-weight:500}
+.status-inline.ok{color:#0b7a44}
+.status-inline.err{color:#b91c1c}
+@keyframes shake{0%,100%{transform:translateX(0)}20%,60%{transform:translateX(-6px)}40%,80%{transform:translateX(6px)}}
+@keyframes spin{to{transform:rotate(360deg)}}
+.shake{animation:shake .4s ease}
+.spin{animation:spin .9s linear infinite}
+@media (max-width:1020px){.grid{grid-template-columns:1fr}.themes{grid-template-columns:repeat(2,1fr)}.two{grid-template-columns:1fr}}
 </style>
 </head>
 <body>
@@ -80,25 +88,23 @@ pre.code{margin:10px 0 0;padding:10px 12px;background:#fafafa;border:1px solid #
 <div class="top">
   <div class="top-inner">
     <div class="brand">
-      <span class="mark">
-        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m22 2-7 20-4-9-9-4Z"/><path d="M22 2 11 13"/></svg>
-      </span>
+      <span class="mark"><i data-lucide="send" style="width:17px;height:17px"></i></span>
       <span class="brand-name">公众号发布台</span>
     </div>
     <nav>
-      <a href="/">文章</a>
-      <a href="/source">数据源</a>
-      <a href="/flow">流程</a>
-      <a href="/usage">用量</a>
-      <a class="active" href="/settings">设置</a>
-      {% if user.role == 'admin' %}<a href="/admin">管理</a>{% endif %}
+      <a href="/"><i data-lucide="file-text" style="width:16px;height:16px"></i>文章</a>
+      <a href="/source"><i data-lucide="database" style="width:16px;height:16px"></i>数据源</a>
+      <a href="/flow"><i data-lucide="git-branch" style="width:16px;height:16px"></i>流程</a>
+      <a href="/usage"><i data-lucide="bar-chart-2" style="width:16px;height:16px"></i>用量</a>
+      <a class="active" href="/settings"><i data-lucide="settings" style="width:16px;height:16px"></i>设置</a>
+      {% if user.role == 'admin' %}<a href="/admin"><i data-lucide="shield" style="width:16px;height:16px"></i>管理</a>{% endif %}
     </nav>
     <div class="top-right">
       <div class="user">
         <span class="avatar">{% if user.picture %}<img src="{{ user.picture }}" alt="">{% else %}{{ (user.name or '?')[:1] }}{% endif %}</span>
         <span>{{ user.name }}</span>
-        <a href="/logout" aria-label="退出登录" style="display:inline-flex;color:#a1a1aa">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+        <a href="/logout" aria-label="退出登录" style="display:inline-flex;color:#71717a" title="退出登录">
+          <i data-lucide="log-out" style="width:16px;height:16px"></i>
         </a>
       </div>
     </div>
@@ -106,13 +112,16 @@ pre.code{margin:10px 0 0;padding:10px 12px;background:#fafafa;border:1px solid #
 </div>
 
 <main>
-  <h1>设置与接入向导</h1>
-  <p class="sub">配置你的微信公众号后，系统将自动生成完全隔离的专属 MCP 与 Notion Webhook 接入链接</p>
+  <div class="page-head">
+    <div>
+      <h1>设置中心</h1>
+      <p class="sub">所有敏感凭据以 AES-256-GCM 加密存储，支持不先保存直接测试连通性</p>
+    </div>
+    <a class="btn" href="/onboarding"><i data-lucide="wand-2" style="width:16px;height:16px"></i>打开分步向导</a>
+  </div>
 
-  {% if welcome %}
-  <div class="notice">欢迎加入！第 1 步：填写下方的<b>公众号 AppID / AppSecret</b> 并把服务器 IP <code style="font-family:monospace">{{ server_ip }}</code> 加到公众号白名单；保存后即可生成你的专属 MCP 和 Webhook 链接。</div>
-  {% elif seed_created %}
-  <div class="notice">公众号信息已就绪，已为你自动生成专属 MCP 链接和 Notion Webhook 链接（见下方「专属接入链接」卡片）。</div>
+  {% if wx_error %}
+  <div class="notice warn">{{ wx_error }}</div>
   {% elif pw_error %}
   <div class="notice warn">{{ pw_error }}</div>
   {% elif saved %}
@@ -123,16 +132,16 @@ pre.code{margin:10px 0 0;padding:10px 12px;background:#fafafa;border:1px solid #
     <div class="grid">
       <div>
         <!-- 1. 微信公众号配置 -->
-        <section class="card">
+        <section class="card" id="card-wx">
           <div class="card-head" style="display:flex;align-items:center;gap:8px">
-            <h2 style="margin:0">1. 微信公众号配置</h2>
-            <span class="badge {{ '' if wx_ready else 'amber' }}" style="margin-left:auto">{{ '已就绪' if wx_ready else '待配置' }}</span>
+            <h2 style="margin:0"><i data-lucide="message-square-dot" style="width:18px;height:18px;color:#07c160"></i>1. 微信公众号配置</h2>
+            <span class="badge {{ '' if wx_ready else 'amber' }}" style="margin-left:auto">{{ '已验证就绪' if wx_ready else '待配置' }}</span>
           </div>
           <div class="card-body">
             <div class="info-box">
-              <b>白名单指引：</b>请前往「微信公众平台 → 设置与开发 → 开发接口管理 → IP 白名单」，将本服务器出口 IP
-              <code style="font-family:monospace;background:#dbeafe;padding:1px 5px;border-radius:4px">{{ server_ip }}</code>
-              添加进去。<button type="button" class="btn" style="height:24px;padding:0 8px;font-size:11px;margin-left:6px" onclick="copyText('{{ server_ip }}', this)">复制 IP</button>
+              <b>白名单指引：</b>请前往「微信公众平台 → 设置与开发 → 开发接口管理 → IP 白名单」，添加服务器出口 IP
+              <code style="font-family:monospace;background:#dbeafe;padding:1px 6px;border-radius:4px">{{ server_ip }}</code>
+              <button type="button" class="btn" style="height:28px;padding:0 10px;font-size:12px;margin-left:6px" onclick="copyText('{{ server_ip }}', this)">复制 IP</button>
             </div>
             <div class="two">
               <div class="field">
@@ -147,80 +156,36 @@ pre.code{margin:10px 0 0;padding:10px 12px;background:#fafafa;border:1px solid #
             <div class="field" style="margin-bottom:0">
               <label class="lbl" for="wx_appsecret">
                 AppSecret
-                {% if wx_secret_set %}<span class="badge">已设置</span>{% endif %}
+                {% if wx_secret_set %}<span class="badge">已加密设置</span>{% endif %}
               </label>
               <input id="wx_appsecret" type="password" name="wx_appsecret" autocomplete="new-password" placeholder="{% if wx_secret_set %}已设置，留空保持不变，输入新值可更新{% else %}32 位开发者密钥{% endif %}">
-              <p class="hint">加密落库，仅支持设置/更新，绝不回显。</p>
+              <p class="hint">AES-256-GCM 加密落库，仅支持设置/更新，绝不回显。</p>
             </div>
           </div>
           <div class="card-foot">
-            <button type="button" class="btn" id="test-wx-btn">测试公众号连通性</button>
-            <span class="hint" id="test-wx-msg" style="margin:0">先填好 AppID / AppSecret 并点底部保存，再点这里测通</span>
+            <button type="button" class="btn" id="test-wx-btn"><i data-lucide="wifi" style="width:16px;height:16px"></i>测试公众号连通性</button>
+            <span class="hint status-inline" id="test-wx-msg" style="margin:0">可直接用上方当前输入内容测试，修改保存时也会自动验证</span>
           </div>
         </section>
 
-        <!-- 2. 专属接入链接（MCP + Webhook） -->
-        <section class="card">
+        <!-- 2. Notion 数据源配置 -->
+        <section class="card" id="card-nt">
           <div class="card-head" style="display:flex;align-items:center;gap:8px">
-            <h2 style="margin:0">2. 专属接入链接（多租户隔离）</h2>
-            {% if mcp_url %}
-            <span class="badge" style="margin-left:auto">种子已激活</span>
-            {% else %}
-            <span class="badge gray" style="margin-left:auto">配齐公众号后自动生成</span>
-            {% endif %}
+            <h2 style="margin:0"><i data-lucide="database" style="width:18px;height:18px;color:#07c160"></i>2. Notion 数据源配置（可选）</h2>
           </div>
           <div class="card-body">
-            {% if mcp_url %}
-            <div class="field">
-              <label class="lbl">专属 MCP Server 地址（用于 Claude / Cursor / Antigravity）</label>
-              <div class="copy-row">
-                <input type="text" id="mcp-url-input" value="{{ mcp_url }}" readonly>
-                <button type="button" class="btn" onclick="copyText(document.getElementById('mcp-url-input').value, this)">复制</button>
-              </div>
-              <details style="margin-top:8px">
-                <summary style="font-size:12px;color:#52525b;cursor:pointer">查看可直接粘贴的 MCP JSON 配置</summary>
-                <pre class="code" id="mcp-json-pre">{{ mcp_snippet }}</pre>
-              </details>
-            </div>
-
-            <div class="field" style="margin-bottom:0">
-              <label class="lbl">专属 Notion Webhook 地址</label>
-              <div class="copy-row">
-                <input type="text" id="wh-url-input" value="{{ webhook_url }}" readonly>
-                <button type="button" class="btn" onclick="copyText(document.getElementById('wh-url-input').value, this)">复制</button>
-              </div>
-              <p class="hint">填到你的 Notion 集成 Webhook 或 Database Automation 中，自动隔离发布到你的公众号。</p>
-            </div>
-            {% else %}
-            <p class="hint" style="margin:0">请先在上方「1. 微信公众号配置」填写并保存 AppID 与 AppSecret。保存后系统会自动生成一个专属随机种子，立即为你派生唯一的 MCP 链接和 Webhook 链接。</p>
-            {% endif %}
-          </div>
-          {% if mcp_url %}
-          <div class="card-foot">
-            <button type="button" class="btn" id="reset-seed-btn">重置链接种子</button>
-            <span class="hint" id="reset-seed-msg" style="margin:0">怀疑链接泄露时可立即重置，旧 MCP 与 Webhook 地址将立刻作废</span>
-          </div>
-          {% endif %}
-        </section>
-
-        <!-- 3. Notion 数据源配置 -->
-        <section class="card">
-          <div class="card-head" style="display:flex;align-items:center;gap:8px">
-            <h2 style="margin:0">3. Notion 数据源配置（可选）</h2>
-          </div>
-          <div class="card-body">
-            <p class="hint" style="margin:0 0 12px">如果使用 Notion 写文章自动推送草稿箱，请在此绑定你的 Notion Integration Token 与文章数据库 ID。</p>
+            <p class="hint" style="margin:0 0 14px">支持直接粘贴 Notion 数据库链接，系统会自动提取 32 位 Database ID。</p>
             <div class="field">
               <label class="lbl" for="notion_token">
                 Notion Integration Token
-                {% if notion_token_set %}<span class="badge">已设置</span>{% endif %}
+                {% if notion_token_set %}<span class="badge">已加密设置</span>{% endif %}
               </label>
               <input id="notion_token" type="password" name="notion_token" autocomplete="new-password" placeholder="{% if notion_token_set %}已设置，留空保持不变，输入新值可更新{% else %}ntn_... 或 secret_...{% endif %}">
             </div>
             <div class="two">
               <div class="field" style="margin-bottom:0">
-                <label class="lbl" for="notion_db_id">Database ID</label>
-                <input id="notion_db_id" type="text" name="notion_db_id" value="{{ cfg.notion.db_id }}" placeholder="32 位数据库 ID">
+                <label class="lbl" for="notion_db_id">数据库链接或 Database ID</label>
+                <input id="notion_db_id" type="text" name="notion_db_id" value="{{ cfg.notion.db_id }}" placeholder="粘贴 Notion 数据库链接或 32 位 ID">
               </div>
               <div class="field" style="margin-bottom:0">
                 <label class="lbl" for="notion_webhook_secret">
@@ -231,14 +196,18 @@ pre.code{margin:10px 0 0;padding:10px 12px;background:#fafafa;border:1px solid #
               </div>
             </div>
           </div>
+          <div class="card-foot">
+            <button type="button" class="btn" id="test-nt-btn"><i data-lucide="plug-zap" style="width:16px;height:16px"></i>测试 Notion 连接</button>
+            <span class="hint status-inline" id="test-nt-msg" style="margin:0">可直接测试上方当前填好的 Token 与数据库链接</span>
+          </div>
         </section>
 
-        <!-- 4. AI 配图偏好 -->
+        <!-- 3. AI 配图偏好 -->
         <section class="card">
           <div class="card-head" style="display:flex;align-items:center;gap:8px">
-            <h2 style="margin:0">4. AI 自动配图</h2>
+            <h2 style="margin:0"><i data-lucide="sparkles" style="width:18px;height:18px;color:#07c160"></i>3. AI 自动配图</h2>
             <label class="switch" style="margin-left:auto">
-              <span style="font-size:12px;color:#71717a">启用</span>
+              <span style="font-size:14px;color:#52525b">启用</span>
               <input type="checkbox" name="ai_enabled" {% if cfg.ai_images.enabled %}checked{% endif %}>
               <span class="track"><span class="thumb"></span></span>
             </label>
@@ -263,23 +232,23 @@ pre.code{margin:10px 0 0;padding:10px 12px;background:#fafafa;border:1px solid #
               </div>
             </div>
 
-            <div class="checks" style="margin-top:2px">
+            <div class="checks" style="margin-top:4px">
               <label class="check"><input type="checkbox" name="ai_write_notion" {% if cfg.ai_images.write_to_notion %}checked{% endif %}>生成的图回写 Notion（页面封面 + 标题后的插图块）</label>
               <div class="check-inline">
                 <label class="check"><input type="checkbox" name="ai_skip_if_has_images" {% if cfg.ai_images.skip_if_has_images %}checked{% endif %}>文章已有配图时跳过 AI 生成</label>
-                <span style="color:#71717a;font-size:12px">（正文图片 ≥</span>
+                <span style="color:#71717a;font-size:13px">（正文图片 ≥</span>
                 <input class="num-inline" type="number" name="ai_skip_min_images" min="1" max="50" value="{{ cfg.ai_images.skip_min_images or 2 }}" aria-label="跳过 AI 生图的最少图片数量">
-                <span style="color:#71717a;font-size:12px">张即跳过）</span>
+                <span style="color:#71717a;font-size:13px">张即跳过）</span>
               </div>
             </div>
           </div>
         </section>
 
-        <!-- 5. 排版主题 -->
+        <!-- 4. 排版主题 -->
         <section class="card">
           <div class="card-head">
-            <h2>5. 发布主题</h2>
-            <p>推送草稿时套用的公众号排版样式。</p>
+            <h2><i data-lucide="palette" style="width:18px;height:18px;color:#07c160"></i>4. 发布主题</h2>
+            <p>推送草稿时套用的公众号排版样式，右侧可实时预览。</p>
           </div>
           <div class="card-body">
             <div class="themes">
@@ -295,12 +264,12 @@ pre.code{margin:10px 0 0;padding:10px 12px;background:#fafafa;border:1px solid #
           </div>
         </section>
 
-        <!-- 6. Bark 通知 -->
-        <section class="card">
+        <!-- 5. Bark 通知 -->
+        <section class="card" id="card-bark">
           <div class="card-head" style="display:flex;align-items:center;gap:8px">
-            <h2 style="margin:0">6. Bark 推送通知</h2>
+            <h2 style="margin:0"><i data-lucide="bell-ring" style="width:18px;height:18px;color:#07c160"></i>5. Bark 推送通知</h2>
             <label class="switch" style="margin-left:auto">
-              <span style="font-size:12px;color:#71717a">启用</span>
+              <span style="font-size:14px;color:#52525b">启用</span>
               <input type="checkbox" name="notify_enabled" {% if cfg.notify.enabled %}checked{% endif %}>
               <span class="track"><span class="thumb"></span></span>
             </label>
@@ -309,7 +278,7 @@ pre.code{margin:10px 0 0;padding:10px 12px;background:#fafafa;border:1px solid #
             <div class="field">
               <label class="lbl" for="bark_key">
                 设备 Key
-                {% if notify_configured %}<span class="badge">已设置</span>{% endif %}
+                {% if notify_configured %}<span class="badge">已加密设置</span>{% endif %}
               </label>
               <input id="bark_key" type="password" name="bark_key" autocomplete="new-password" placeholder="{% if notify_configured %}已设置，留空保持不变，输入新值可更新{% else %}在 Bark App 首页复制{% endif %}">
               <p class="hint">仅支持设置或更新，绝不回显原值</p>
@@ -331,50 +300,45 @@ pre.code{margin:10px 0 0;padding:10px 12px;background:#fafafa;border:1px solid #
             </div>
           </div>
           <div class="card-foot">
-            <button type="button" class="btn" id="test-btn">发送测试通知</button>
-            <span class="hint" id="test-msg" style="margin:0">先保存再测</span>
-          </div>
-        </section>
-
-        <!-- 7. 账户安全 -->
-        <section class="card">
-          <div class="card-head">
-            <h2>7. 账户安全</h2>
-            <p>当前账号：<b>{{ u.username }}</b>{% if user.role == 'admin' %}（主管理员，支持 Pocket ID 登录）{% endif %}</p>
-          </div>
-          <div class="card-body">
-            <div class="field" style="margin-bottom:0">
-              <label class="lbl" for="new_password">修改登录密码（可选）</label>
-              <input id="new_password" type="password" name="new_password" autocomplete="new-password" placeholder="留空不修改；至少 6 位">
-            </div>
+            <button type="button" class="btn" id="test-btn"><i data-lucide="send" style="width:16px;height:16px"></i>发送测试通知</button>
+            <span class="hint status-inline" id="test-msg" style="margin:0">可直接测试上方当前输入的设备 Key</span>
           </div>
         </section>
 
         <div class="save-row">
-          <button type="submit" class="btn btn-primary" style="height:38px;padding:0 22px">保存全部配置</button>
-          <span class="note">保存后立即生效，仅对你自己的账号有效</span>
+          <button type="submit" class="btn btn-primary" style="height:44px;padding:0 24px"><i data-lucide="save" style="width:17px;height:17px"></i>保存全部配置</button>
+          <span class="note">保存后立即生效；专属接入链接请在「流程」或「数据源」页面复制</span>
         </div>
+
+        <details style="margin-top:16px;color:#71717a;font-size:13px">
+          <summary style="cursor:pointer">需要修改当前账号（{{ u.username }}）的登录密码？</summary>
+          <div class="field" style="margin-top:10px;max-width:340px">
+            <input id="new_password" type="password" name="new_password" autocomplete="new-password" placeholder="输入新密码（留空不修改；至少 6 位）">
+          </div>
+        </details>
       </div>
 
       <aside class="card" style="margin:0">
         <div class="preview-head">
-          <span style="font-size:13px;font-weight:600">排版预览</span>
-          <span class="badge" id="preview-theme">{{ current_theme }}</span>
+          <i data-lucide="smartphone" style="width:16px;height:16px;color:#07c160"></i>
+          <span style="font-size:15px;font-weight:600">排版预览</span>
+          <span class="badge" id="preview-theme" style="margin-left:auto">{{ current_theme }}</span>
         </div>
         <div class="preview-body">
           {% if sample %}
           <iframe id="preview-frame" src="/preview/{{ sample.id }}?token={{ token }}&theme={{ current_theme }}" title="文章预览"></iframe>
           {% else %}
-          <div style="height:470px;display:flex;align-items:center;justify-content:center;font-size:13px;color:#a1a1aa;padding:24px;text-align:center">你名下还没有文章，配置好后通过 MCP 或 Notion 发一篇就能在这里预览排版。</div>
+          <iframe id="preview-frame" src="/preview-demo?theme={{ current_theme }}" title="示例文章排版预览"></iframe>
           {% endif %}
         </div>
-        <div class="preview-foot">点左侧发布主题，右侧会即时切换排版效果。</div>
+        <div class="preview-foot">点击左侧「发布主题」，右侧会以{{ '你的最近文章' if sample else '内置示例文案' }}即时切换排版效果。</div>
       </aside>
     </div>
   </form>
 </main>
 
 <script>
+if (window.lucide) lucide.createIcons();
 function copyText(txt, btn) {
   if (!txt) return;
   navigator.clipboard.writeText(txt).then(function () {
@@ -392,7 +356,7 @@ function copyText(txt, btn) {
   {% if sample %}
   var base = "/preview/{{ sample.id }}?token={{ token }}&theme=";
   {% else %}
-  var base = null;
+  var base = "/preview-demo?theme=";
   {% endif %}
 
   function fitFrame() {
@@ -415,40 +379,71 @@ function copyText(txt, btn) {
     });
   });
 
+  function shakeEl(id) {
+    var el = document.getElementById(id);
+    if (!el) return;
+    el.classList.remove('shake');
+    void el.offsetWidth;
+    el.classList.add('shake');
+  }
+
   var wxBtn = document.getElementById('test-wx-btn');
   var wxMsg = document.getElementById('test-wx-msg');
   if (wxBtn) {
     wxBtn.addEventListener('click', async function () {
-      wxMsg.textContent = '检测中…';
+      wxBtn.disabled = true;
+      wxMsg.className = 'hint status-inline';
+      wxMsg.textContent = '正在校验公众号连通性...';
       try {
-        var r = await fetch('/settings/test-wechat', { method: 'POST' });
+        var r = await fetch('/settings/test-wechat', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            appid: document.getElementById('wx_appid').value.trim(),
+            appsecret: document.getElementById('wx_appsecret').value.trim()
+          })
+        });
         var d = await r.json();
-        wxMsg.textContent = d.ok ? ('✅ ' + d.message) : ('❌ ' + (d.reason || '校验失败'));
+        wxMsg.className = 'hint status-inline ' + (d.ok ? 'ok' : 'err');
+        wxMsg.textContent = d.ok ? d.message : (d.reason || '校验失败');
+        if (!d.ok) shakeEl('card-wx');
       } catch (e) {
+        wxMsg.className = 'hint status-inline err';
         wxMsg.textContent = '请求失败：' + e.message;
+        shakeEl('card-wx');
+      } finally {
+        wxBtn.disabled = false;
       }
     });
   }
 
-  var resetBtn = document.getElementById('reset-seed-btn');
-  var resetMsg = document.getElementById('reset-seed-msg');
-  if (resetBtn) {
-    resetBtn.addEventListener('click', async function () {
-      if (!confirm('确认重置专属链接种子？重置后原 MCP 和 Webhook 地址将立刻失效。')) return;
-      resetMsg.textContent = '重置中…';
+  var ntBtn = document.getElementById('test-nt-btn');
+  var ntMsg = document.getElementById('test-nt-msg');
+  if (ntBtn) {
+    ntBtn.addEventListener('click', async function () {
+      ntBtn.disabled = true;
+      ntMsg.className = 'hint status-inline';
+      ntMsg.textContent = '正在连接 Notion...';
       try {
-        var r = await fetch('/settings/reset-seed', { method: 'POST' });
+        var r = await fetch('/settings/test-notion', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            token: document.getElementById('notion_token').value.trim(),
+            db_id: document.getElementById('notion_db_id').value.trim()
+          })
+        });
         var d = await r.json();
-        if (!d.ok) { resetMsg.textContent = d.reason || '重置失败'; return; }
-        var mcpIn = document.getElementById('mcp-url-input');
-        var whIn = document.getElementById('wh-url-input');
-        if (mcpIn) mcpIn.value = d.mcp_url || '';
-        if (whIn) whIn.value = d.webhook_url || '';
-        var pre = document.getElementById('mcp-json-pre');
-        if (pre) pre.textContent = JSON.stringify({ mcpServers: { "wechat-publisher": { url: d.mcp_url } } }, null, 2);
-        resetMsg.textContent = '已重新生成，请更新客户端配置';
+        if (d.ok && d.db_id) document.getElementById('notion_db_id').value = d.db_id;
+        ntMsg.className = 'hint status-inline ' + (d.ok ? 'ok' : 'err');
+        ntMsg.textContent = d.ok ? d.message : (d.reason || '连接失败');
+        if (!d.ok) shakeEl('card-nt');
       } catch (e) {
-        resetMsg.textContent = '请求失败：' + e.message;
+        ntMsg.className = 'hint status-inline err';
+        ntMsg.textContent = '请求失败：' + e.message;
+        shakeEl('card-nt');
+      } finally {
+        ntBtn.disabled = false;
       }
     });
   }
@@ -457,14 +452,29 @@ function copyText(txt, btn) {
   var msg = document.getElementById('test-msg');
   if (btn) {
     btn.addEventListener('click', async function () {
+      btn.disabled = true;
+      msg.className = 'hint status-inline';
       msg.textContent = '发送中…';
       try {
-        var resp = await fetch('/settings/test-notify', { method: 'POST' });
+        var resp = await fetch('/settings/test-notify', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            key: document.getElementById('bark_key').value.trim(),
+            server: document.getElementById('bark_server').value.trim(),
+            group: document.getElementById('bark_group').value.trim()
+          })
+        });
         var data = await resp.json();
-        if (data.ok) msg.textContent = '已发送，看看手机';
-        else msg.textContent = '没发出去：' + (data.reason || data.status || '未知原因');
+        msg.className = 'hint status-inline ' + (data.ok ? 'ok' : 'err');
+        msg.textContent = data.ok ? '已发送测试通知，请查看手机' : ('发送失败：' + (data.reason || data.status || '未知原因'));
+        if (!data.ok) shakeEl('card-bark');
       } catch (e) {
+        msg.className = 'hint status-inline err';
         msg.textContent = '请求失败：' + e.message;
+        shakeEl('card-bark');
+      } finally {
+        btn.disabled = false;
       }
     });
   }

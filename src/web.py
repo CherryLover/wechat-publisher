@@ -11,6 +11,7 @@ import logging
 import os
 from pathlib import Path
 from typing import Optional
+from urllib.parse import quote
 
 from fastapi import APIRouter, Request
 from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
@@ -30,7 +31,9 @@ from . import (
     usage,
 )
 from .auth import create_preview_token
-from .html_convert import list_themes
+from .html_convert import apply_theme_for_preview, list_themes, markdown_to_html
+from .notion_source import NotionSource
+from .wechat import WechatAPI
 
 logger = logging.getLogger(__name__)
 
@@ -163,6 +166,84 @@ _SETTINGS_PW_ERRORS = {
     "short": f"其他配置已保存，但新密码长度至少需要 {password_auth.MIN_PASSWORD_LENGTH} 位。",
 }
 
+_ONBOARDING_STEPS = [
+    {"id": "wechat", "index": 1, "title": "微信公众号", "required": True, "desc": "验证 AppID 与 AppSecret 连通性"},
+    {"id": "notion", "index": 2, "title": "Notion 数据源", "required": False, "desc": "绑定文档数据库与同步触发"},
+    {"id": "ai", "index": 3, "title": "AI 智能配图", "required": False, "desc": "按需开启自动封面与正文插图"},
+    {"id": "theme", "index": 4, "title": "排版主题", "required": False, "desc": "实时预览公众号文章排版效果"},
+    {"id": "notify", "index": 5, "title": "Bark 通知", "required": False, "desc": "发布进度与异常即时推送"},
+]
+_STEP_ALIASES = {
+    "1": "wechat", "wechat": "wechat",
+    "2": "notion", "notion": "notion",
+    "3": "ai", "ai": "ai",
+    "4": "theme", "theme": "theme",
+    "5": "notify", "notify": "notify",
+}
+
+_DEMO_ARTICLE_MD = """# 把每周灵感冒泡成一篇好文章
+
+当你把笔记整理进 Notion，发布台会在后台完成主题排版、图片转存与草稿推送，你只需要专注于表达本身。
+
+> 好排版不是喧宾夺主，而是让读者舒服地把整篇文章读完。
+
+## 为什么选择自动化工作流
+
+1. **一次写作，随时同步**：在 Notion 修改状态为“待发布”，几秒内自动生成公众号草稿。
+2. **多主题即时切换**：同一份 Markdown 文稿，可在简洁、暖刊或极客风之间自由预览与发布。
+3. **关键凭据加密保管**：AppSecret 与 Notion Token 均以 AES-256-GCM 密文形式独立存储。
+
+### 排版细节预览
+
+正文中的 `行内代码`、加粗重点与引用段落会随左侧选中的主题实时变化；如果你开启了 **AI 配图**，未配图的文章还会自动生成匹配语境的封面与插图。
+
+---
+
+*以上为实时排版示例文案，你可以在左侧切换不同主题风格即时查看效果。*
+"""
+
+
+def _post_login_target(user_id: str, welcome: bool = False) -> str:
+    if tenant.needs_onboarding(user_id):
+        return "/onboarding?welcome=1" if welcome else "/onboarding"
+    return "/"
+
+
+async def _verify_wechat_credentials(appid: str, appsecret: str) -> tuple[bool, str]:
+    """实时调用微信 API 校验 AppID 与 AppSecret 是否可用"""
+    aid = (appid or "").strip()
+    sec = (appsecret or "").strip()
+    if not (aid and sec):
+        return False, "请先填写 AppID 与 AppSecret"
+    try:
+        wx = WechatAPI(aid, sec)
+        await wx.get_access_token()
+        return True, "公众号凭证校验通过，可以正常推送草稿箱"
+    except Exception as e:
+        msg = str(e)
+        if "40164" in msg:
+            tip = f"服务器 IP 未加入公众号白名单，请把 {os.getenv('SERVER_PUBLIC_IP', '161.153.84.30')} 加到公众号后台 IP 白名单"
+        elif "40125" in msg or "40001" in msg:
+            tip = "AppSecret 不正确，请核对公众号开发者密钥"
+        elif "40013" in msg:
+            tip = "AppID 无效，请核对公众号开发者 ID"
+        else:
+            tip = msg[:160]
+        return False, tip
+
+
+async def _read_payload(request: Request) -> tuple[dict, bool]:
+    """兼容 JSON 与 Form 提交，返回 (payload_dict, is_json)"""
+    ctype = (request.headers.get("content-type") or "").lower()
+    if "application/json" in ctype:
+        try:
+            data = await request.json()
+            return (data if isinstance(data, dict) else {}), True
+        except Exception:
+            return {}, True
+    form = await request.form()
+    return {k: v for k, v in form.items()}, False
+
 
 # ---------- 登录 & 注册 ----------
 
@@ -170,7 +251,7 @@ _SETTINGS_PW_ERRORS = {
 async def login_page(request: Request, pw_err: Optional[str] = None, username: Optional[str] = None):
     user = current_user(request)
     if user:
-        return RedirectResponse("/", status_code=303)
+        return RedirectResponse(_post_login_target(user["id"]), status_code=303)
 
     tenant.bootstrap_owner()
     authorize_url = None
@@ -225,7 +306,7 @@ async def login_with_password(request: Request):
         return RedirectResponse(f"/login?pw_err=invalid&username={username}", status_code=303)
 
     password_auth.rate_limiter.reset(ip)
-    resp = RedirectResponse("/", status_code=303)
+    resp = RedirectResponse(_post_login_target(matched_user["id"]), status_code=303)
     _set_session_cookie(resp, request, matched_user, "password")
     logger.info("用户账号密码登录: user=%s ip=%s", matched_user["username"], ip)
     return resp
@@ -233,8 +314,9 @@ async def login_with_password(request: Request):
 
 @router.get("/register", response_class=HTMLResponse)
 async def register_page(request: Request, err: Optional[str] = None, username: Optional[str] = None):
-    if current_user(request):
-        return RedirectResponse("/", status_code=303)
+    user = current_user(request)
+    if user:
+        return RedirectResponse(_post_login_target(user["id"]), status_code=303)
 
     gcfg = config.load_config()
     return templates.TemplateResponse(
@@ -273,7 +355,7 @@ async def register_submit(request: Request):
     if err or not user:
         return RedirectResponse(f"/register?err={err or 'invalid_username'}&username={username}", status_code=303)
 
-    resp = RedirectResponse("/settings?welcome=1", status_code=303)
+    resp = RedirectResponse(_post_login_target(user["id"], welcome=True), status_code=303)
     _set_session_cookie(resp, request, user, "password")
     logger.info("新用户注册成功: id=%s username=%s", user["id"], user["username"])
     return resp
@@ -313,7 +395,7 @@ async def auth_callback(
     if not bound_user:
         return HTMLResponse("<h1>登录失败</h1><p>未找到可用账号</p>", status_code=400)
 
-    resp = RedirectResponse("/", status_code=303)
+    resp = RedirectResponse(_post_login_target(bound_user["id"]), status_code=303)
     _set_session_cookie(
         resp,
         request,
@@ -345,6 +427,9 @@ async def home(request: Request):
         return RedirectResponse("/login", status_code=303)
 
     uid = user["id"]
+    if tenant.needs_onboarding(uid):
+        return RedirectResponse("/onboarding", status_code=303)
+
     u_row = tenant.get_user_by_id(uid)
     tcfg = (u_row or {}).get("config") or tenant.TENANT_DEFAULTS
     articles = article.list_articles(user_id=uid)
@@ -369,9 +454,337 @@ async def home(request: Request):
         "total": len(rows),
         "theme_name": _theme_name(tcfg.get("theme") or "default"),
         "latest": rows[0]["published_at"] if rows else "—",
-        "wechat_ready": bool(wx.get("appid") and wx.get("appsecret")),
+        "wechat_ready": bool(wx.get("appid") and wx.get("appsecret") and wx.get("verified")),
         "seed_ready": bool((u_row or {}).get("mcp_token")),
     })
+
+
+# ---------- 分步引导配置与实时预览 Demo ----------
+
+def _as_bool(val) -> bool:
+    if isinstance(val, bool):
+        return val
+    return str(val or "").strip().lower() in ("1", "true", "on", "yes")
+
+
+@router.get("/preview-demo", response_class=HTMLResponse)
+async def preview_demo(request: Request, theme: Optional[str] = None):
+    """内置示例文案实时排版预览（用于引导向导与设置页右侧实时渲染）"""
+    user = current_user(request)
+    if not user:
+        return HTMLResponse("<h1>401 未授权</h1>", status_code=401)
+    uid = user["id"]
+    cfg = tenant.get_tenant_config(uid)
+    use_theme = (theme or cfg.get("theme") or "default").strip()
+    valid_ids = {t["id"] for t in list_themes()}
+    if use_theme not in valid_ids:
+        use_theme = "default"
+    author = ((cfg.get("wechat") or {}).get("author") or user.get("name") or "创作者").strip()
+    raw_html = markdown_to_html(_DEMO_ARTICLE_MD)
+    styled_html = apply_theme_for_preview(raw_html, use_theme)
+    theme_label = _theme_name(use_theme)
+    html_doc = f"""<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<style>
+* {{ box-sizing: border-box; }}
+body {{
+  margin: 0;
+  padding: 18px 20px 28px;
+  background: #ffffff;
+  color: #1f2328;
+  font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Helvetica Neue", Arial, sans-serif;
+}}
+.demo-head {{
+  padding-bottom: 14px;
+  margin-bottom: 16px;
+  border-bottom: 1px solid #eef0f3;
+}}
+.demo-pill {{
+  display: inline-block;
+  font-size: 11px;
+  font-weight: 600;
+  color: #07c160;
+  background: #eefaf3;
+  border: 1px solid #bdebd0;
+  padding: 2px 8px;
+  border-radius: 999px;
+  margin-bottom: 8px;
+}}
+.demo-meta {{
+  font-size: 13px;
+  color: #6b7280;
+}}
+</style>
+</head>
+<body>
+  <div class="demo-head">
+    <span class="demo-pill">当前预览主题：{theme_label}</span>
+    <div class="demo-meta">公众号作者：{author} · 示例文案</div>
+  </div>
+  <div class="demo-body">{styled_html}</div>
+</body>
+</html>"""
+    return HTMLResponse(html_doc)
+
+
+@router.get("/onboarding", response_class=HTMLResponse)
+async def onboarding_page(
+    request: Request,
+    step: Optional[str] = None,
+    welcome: Optional[str] = None,
+):
+    user = current_user(request)
+    if not user:
+        return RedirectResponse("/login", status_code=303)
+
+    uid = user["id"]
+    u_row = tenant.get_user_by_id(uid) or {}
+    cfg = json.loads(json.dumps(u_row.get("config") or tenant.TENANT_DEFAULTS))
+
+    wx = cfg.get("wechat") or {}
+    nt = cfg.get("notion") or {}
+    bark = (cfg.get("notify") or {}).get("bark") or {}
+
+    wx_verified = tenant.is_wechat_configured(uid)
+    wx_secret_set = bool(wx.get("appsecret"))
+    notion_token_set = bool(nt.get("token"))
+    notion_wh_secret_set = bool(nt.get("webhook_secret"))
+    notify_configured = bool(bark.get("key"))
+
+    # 敏感凭据绝不回显
+    if isinstance(wx, dict):
+        wx["appsecret"] = ""
+    if isinstance(nt, dict):
+        nt["token"] = ""
+        nt["webhook_secret"] = ""
+    if isinstance(bark, dict):
+        bark["key"] = ""
+
+    # 若公众号作者为空，自动带入注册时填写的公众号名称
+    if isinstance(wx, dict) and not (wx.get("author") or "").strip():
+        wx["author"] = u_row.get("display_name") or ""
+
+    req_step = _STEP_ALIASES.get((step or "").strip().lower(), "wechat")
+    if not wx_verified:
+        req_step = "wechat"
+
+    platform_ai = config.load_config().get("ai_images") or {}
+    platform_ai_ready = bool(
+        platform_ai.get("base_url")
+        and platform_ai.get("api_key")
+        and platform_ai.get("text_model")
+        and platform_ai.get("image_model")
+    )
+
+    return templates.TemplateResponse("onboarding.html", {
+        "request": request,
+        "user": user,
+        "u": u_row,
+        "cfg": cfg,
+        "steps": _ONBOARDING_STEPS,
+        "initial_step": req_step,
+        "welcome": bool(welcome),
+        "wx_verified": wx_verified,
+        "wx_secret_set": wx_secret_set,
+        "notion_token_set": notion_token_set,
+        "notion_wh_secret_set": notion_wh_secret_set,
+        "notify_configured": notify_configured,
+        "themes": list_themes(),
+        "current_theme": cfg.get("theme") or "default",
+        "server_ip": os.getenv("SERVER_PUBLIC_IP", "161.153.84.30"),
+        "platform_ai_ready": platform_ai_ready,
+    })
+
+
+@router.post("/onboarding/step/wechat")
+async def onboarding_step_wechat(request: Request):
+    user = current_user(request)
+    if not user:
+        return JSONResponse({"ok": False, "reason": "unauthorized"}, status_code=401)
+
+    uid = user["id"]
+    data, is_json = await _read_payload(request)
+    old = tenant.get_tenant_config(uid)
+    wx_old = old.get("wechat") or {}
+
+    appid = str(data.get("appid") or data.get("wx_appid") or "").strip()
+    raw_secret = str(data.get("appsecret") or data.get("wx_appsecret") or "").strip()
+    appsecret = raw_secret or (wx_old.get("appsecret") or "")
+    author = str(data.get("author") or data.get("wx_author") or "").strip()
+
+    ok, msg = await _verify_wechat_credentials(appid, appsecret)
+    if not ok:
+        if is_json:
+            return JSONResponse({"ok": False, "reason": msg}, status_code=400)
+        return RedirectResponse(f"/onboarding?step=wechat", status_code=303)
+
+    cfg = json.loads(json.dumps(old))
+    cfg["wechat"] = {
+        "appid": appid,
+        "appsecret": appsecret,
+        "author": author,
+        "verified": True,
+    }
+    tenant.save_tenant_config(uid, cfg)
+    logger.info("引导配置完成微信公众号验证与加密存储: user=%s", uid)
+
+    if not is_json:
+        return RedirectResponse("/onboarding?step=notion", status_code=303)
+    return JSONResponse({
+        "ok": True,
+        "next_step": "notion",
+        "encrypted_preview": "enc:v1:••••••••••••",
+        "message": "公众号校验通过！AppSecret 已通过 AES-256-GCM 算法加密存入数据库。",
+    })
+
+
+@router.post("/onboarding/step/notion")
+async def onboarding_step_notion(request: Request):
+    user = current_user(request)
+    if not user:
+        return JSONResponse({"ok": False, "reason": "unauthorized"}, status_code=401)
+
+    uid = user["id"]
+    if tenant.needs_onboarding(uid):
+        return JSONResponse({"ok": False, "reason": "请先完成第 1 步微信公众号验证"}, status_code=400)
+
+    data, is_json = await _read_payload(request)
+    if str(data.get("action") or "").strip().lower() == "skip":
+        if not is_json:
+            return RedirectResponse("/onboarding?step=ai", status_code=303)
+        return JSONResponse({"ok": True, "skipped": True, "next_step": "ai"})
+
+    old = tenant.get_tenant_config(uid)
+    nt_old = old.get("notion") or {}
+    raw_tok = str(data.get("token") or data.get("notion_token") or "").strip()
+    raw_db = str(data.get("db_id") or data.get("notion_db_id") or "").strip()
+    raw_wh = str(data.get("webhook_secret") or data.get("notion_webhook_secret") or "").strip()
+    extracted_db = notion_db.extract_database_id(raw_db)
+
+    cfg = json.loads(json.dumps(old))
+    cfg["notion"] = {
+        "token": raw_tok or (nt_old.get("token") or ""),
+        "db_id": extracted_db,
+        "webhook_secret": raw_wh or (nt_old.get("webhook_secret") or ""),
+    }
+    tenant.save_tenant_config(uid, cfg)
+    notion_db.clear_cache(uid)
+    if not is_json:
+        return RedirectResponse("/onboarding?step=ai", status_code=303)
+    return JSONResponse({
+        "ok": True,
+        "next_step": "ai",
+        "db_id": extracted_db,
+        "message": "Notion 数据源配置已保存",
+    })
+
+
+@router.post("/onboarding/step/ai")
+async def onboarding_step_ai(request: Request):
+    user = current_user(request)
+    if not user:
+        return JSONResponse({"ok": False, "reason": "unauthorized"}, status_code=401)
+
+    uid = user["id"]
+    if tenant.needs_onboarding(uid):
+        return JSONResponse({"ok": False, "reason": "请先完成第 1 步微信公众号验证"}, status_code=400)
+
+    data, is_json = await _read_payload(request)
+    if str(data.get("action") or "").strip().lower() == "skip":
+        if not is_json:
+            return RedirectResponse("/onboarding?step=theme", status_code=303)
+        return JSONResponse({"ok": True, "skipped": True, "next_step": "theme"})
+
+    old = tenant.get_tenant_config(uid)
+    ai_old = old.get("ai_images") or {}
+    raw_min = str(data.get("skip_min_images") or data.get("ai_skip_min_images") or "").strip()
+    try:
+        skip_min = max(1, int(raw_min)) if raw_min else max(1, int(ai_old.get("skip_min_images") or 2))
+    except (TypeError, ValueError):
+        skip_min = 2
+
+    cfg = json.loads(json.dumps(old))
+    cfg["ai_images"] = {
+        "enabled": _as_bool(data.get("enabled") if "enabled" in data else data.get("ai_enabled")),
+        "style_mode": str(data.get("style_mode") or data.get("ai_style_mode") or "auto").strip() or "auto",
+        "style": str(data.get("style") or data.get("ai_style") or "").strip(),
+        "write_to_notion": _as_bool(data.get("write_to_notion") if "write_to_notion" in data else data.get("ai_write_notion")),
+        "skip_if_has_images": _as_bool(data.get("skip_if_has_images") if "skip_if_has_images" in data else data.get("ai_skip_if_has_images")),
+        "skip_min_images": skip_min,
+    }
+    tenant.save_tenant_config(uid, cfg)
+    if not is_json:
+        return RedirectResponse("/onboarding?step=theme", status_code=303)
+    return JSONResponse({"ok": True, "next_step": "theme", "message": "AI 配图偏好已保存"})
+
+
+@router.post("/onboarding/step/theme")
+async def onboarding_step_theme(request: Request):
+    user = current_user(request)
+    if not user:
+        return JSONResponse({"ok": False, "reason": "unauthorized"}, status_code=401)
+
+    uid = user["id"]
+    if tenant.needs_onboarding(uid):
+        return JSONResponse({"ok": False, "reason": "请先完成第 1 步微信公众号验证"}, status_code=400)
+
+    data, is_json = await _read_payload(request)
+    if str(data.get("action") or "").strip().lower() == "skip":
+        if not is_json:
+            return RedirectResponse("/onboarding?step=notify", status_code=303)
+        return JSONResponse({"ok": True, "skipped": True, "next_step": "notify"})
+
+    theme_id = str(data.get("theme") or "default").strip() or "default"
+    old = tenant.get_tenant_config(uid)
+    cfg = json.loads(json.dumps(old))
+    cfg["theme"] = theme_id
+    tenant.save_tenant_config(uid, cfg)
+    if not is_json:
+        return RedirectResponse("/onboarding?step=notify", status_code=303)
+    return JSONResponse({"ok": True, "next_step": "notify", "message": "排版主题已保存"})
+
+
+@router.post("/onboarding/step/notify")
+async def onboarding_step_notify(request: Request):
+    user = current_user(request)
+    if not user:
+        return JSONResponse({"ok": False, "reason": "unauthorized"}, status_code=401)
+
+    uid = user["id"]
+    if tenant.needs_onboarding(uid):
+        return JSONResponse({"ok": False, "reason": "请先完成第 1 步微信公众号验证"}, status_code=400)
+
+    data, is_json = await _read_payload(request)
+    if str(data.get("action") or "").strip().lower() == "skip":
+        if not is_json:
+            return RedirectResponse("/", status_code=303)
+        return JSONResponse({"ok": True, "skipped": True, "done": True, "redirect": "/"})
+
+    old = tenant.get_tenant_config(uid)
+    bark_old = (old.get("notify") or {}).get("bark") or {}
+    raw_key = str(data.get("key") or data.get("bark_key") or "").strip()
+
+    cfg = json.loads(json.dumps(old))
+    cfg["notify"] = {
+        "enabled": _as_bool(data.get("enabled") if "enabled" in data else data.get("notify_enabled")),
+        "bark": {
+            "key": raw_key or (bark_old.get("key") or ""),
+            "server": str(data.get("server") or data.get("bark_server") or "https://api.day.app").strip() or "https://api.day.app",
+            "group": str(data.get("group") or data.get("bark_group") or "公众号发布").strip() or "公众号发布",
+        },
+        "events": {
+            "start": _as_bool(data.get("ev_start")),
+            "success": _as_bool(data.get("ev_success")),
+            "error": _as_bool(data.get("ev_error")),
+        },
+    }
+    tenant.save_tenant_config(uid, cfg)
+    if not is_json:
+        return RedirectResponse("/", status_code=303)
+    return JSONResponse({"ok": True, "done": True, "redirect": "/", "message": "全部配置完成！"})
 
 
 # ---------- 设置 ----------
@@ -384,6 +797,7 @@ async def settings_page(
     seed_reset: Optional[str] = None,
     seed_created: Optional[str] = None,
     pw_err: Optional[str] = None,
+    wx_err: Optional[str] = None,
 ):
     user = current_user(request)
     if not user:
@@ -452,7 +866,7 @@ async def settings_page(
         "seed_created": bool(seed_created),
         "sample": sample,
         "token": token,
-        "wx_ready": bool(wx.get("appid") and wx_secret_set),
+        "wx_ready": tenant.is_wechat_configured(uid),
         "wx_secret_set": wx_secret_set,
         "notion_token_set": notion_token_set,
         "notion_wh_secret_set": notion_wh_secret_set,
@@ -463,6 +877,7 @@ async def settings_page(
         "server_ip": os.getenv("SERVER_PUBLIC_IP", "161.153.84.30"),
         "platform_ai_ready": platform_ai_ready,
         "pw_error": _SETTINGS_PW_ERRORS.get(pw_err or ""),
+        "wx_error": (wx_err or "").strip(),
     })
 
 
@@ -484,6 +899,26 @@ async def save_settings(request: Request):
     bark_old = (old.get("notify") or {}).get("bark") or {}
     ai_old = old.get("ai_images") or {}
 
+    new_appid = (form.get("wx_appid") or "").strip()
+    raw_wx_secret = (form.get("wx_appsecret") or "").strip()
+    new_appsecret = raw_wx_secret or (wx_old.get("appsecret") or "")
+    wx_verified = bool(wx_old.get("verified"))
+
+    if new_appid or raw_wx_secret:
+        changed = (new_appid != (wx_old.get("appid") or "").strip()) or bool(raw_wx_secret)
+        if changed or not wx_verified:
+            ok, msg = await _verify_wechat_credentials(new_appid, new_appsecret)
+            if not ok:
+                return RedirectResponse(f"/settings?wx_err={quote(msg)}", status_code=303)
+        wx_verified = True
+    elif "wx_appid" in form:
+        new_appsecret = ""
+        wx_verified = False
+    else:
+        new_appid = (wx_old.get("appid") or "").strip()
+        new_appsecret = (wx_old.get("appsecret") or "")
+        wx_verified = bool(wx_old.get("verified"))
+
     raw_min = (form.get("ai_skip_min_images") or "").strip()
     min_val = raw_min if raw_min else ai_old.get("skip_min_images")
     if min_val is None or min_val == "":
@@ -497,13 +932,14 @@ async def save_settings(request: Request):
     cfg = {
         "theme": (form.get("theme") or "default").strip(),
         "wechat": {
-            "appid": (form.get("wx_appid") or "").strip(),
-            "appsecret": (form.get("wx_appsecret") or "").strip() or (wx_old.get("appsecret") or ""),
+            "appid": new_appid,
+            "appsecret": new_appsecret,
             "author": (form.get("wx_author") or "").strip(),
+            "verified": wx_verified,
         },
         "notion": {
             "token": (form.get("notion_token") or "").strip() or (nt_old.get("token") or ""),
-            "db_id": (form.get("notion_db_id") or "").strip(),
+            "db_id": notion_db.extract_database_id(form.get("notion_db_id") or ""),
             "webhook_secret": (form.get("notion_webhook_secret") or "").strip() or (nt_old.get("webhook_secret") or ""),
         },
         "notify": {
@@ -571,24 +1007,36 @@ async def test_wechat(request: Request):
     if not user:
         return JSONResponse({"ok": False, "reason": "unauthorized"}, status_code=401)
 
-    wx = tenant.get_wechat_api(user["id"])
-    if not wx:
-        return JSONResponse({"ok": False, "reason": "请先填写 AppID 与 AppSecret 并点击保存"})
+    uid = user["id"]
+    wx_old = (tenant.get_tenant_config(uid).get("wechat") or {})
+    data, _ = await _read_payload(request)
+    appid = str(data.get("appid") or data.get("wx_appid") or "").strip() or (wx_old.get("appid") or "").strip()
+    appsecret = str(data.get("appsecret") or data.get("wx_appsecret") or "").strip() or (wx_old.get("appsecret") or "").strip()
 
-    try:
-        await wx.get_access_token()
-        return JSONResponse({"ok": True, "message": "公众号凭证校验通过，可以正常推送草稿箱"})
-    except Exception as e:
-        msg = str(e)
-        if "40164" in msg:
-            tip = f"服务器 IP 未加入公众号白名单，请把 {os.getenv('SERVER_PUBLIC_IP', '161.153.84.30')} 加到公众号后台 IP 白名单"
-        elif "40125" in msg or "40001" in msg:
-            tip = "AppSecret 不正确，请核对公众号开发者密钥并重新保存"
-        elif "40013" in msg:
-            tip = "AppID 无效，请核对公众号开发者 ID"
-        else:
-            tip = msg[:160]
-        return JSONResponse({"ok": False, "reason": tip})
+    ok, msg = await _verify_wechat_credentials(appid, appsecret)
+    if ok:
+        return JSONResponse({"ok": True, "message": msg})
+    return JSONResponse({"ok": False, "reason": msg})
+
+
+@router.post("/settings/test-notion")
+async def test_notion(request: Request):
+    user = current_user(request)
+    if not user:
+        return JSONResponse({"ok": False, "reason": "unauthorized"}, status_code=401)
+
+    uid = user["id"]
+    nt_old = (tenant.get_tenant_config(uid).get("notion") or {})
+    data, _ = await _read_payload(request)
+    tok = str(data.get("token") or data.get("notion_token") or "").strip() or (nt_old.get("token") or "").strip()
+    db_id = str(data.get("db_id") or data.get("notion_db_id") or "").strip() or (nt_old.get("db_id") or "").strip()
+    if uid == tenant.OWNER_ID:
+        if not tok:
+            tok = os.getenv("NOTION_TOKEN", "").strip()
+        if not db_id:
+            db_id = (os.getenv("NOTION_DB_ID") or os.getenv("NOTION_DATABASE_ID") or "").strip()
+    result = await notion_db.test_connection(tok, db_id)
+    return JSONResponse(result)
 
 
 @router.post("/settings/test-notify")
@@ -597,7 +1045,18 @@ async def test_notify(request: Request):
     if not user:
         return JSONResponse({"ok": False, "reason": "unauthorized"}, status_code=401)
 
-    result = await notify.send("发布台 · 测试通知", "如果你看到这条，说明 Bark 配好了。", user_id=user["id"])
+    data, _ = await _read_payload(request)
+    bark_override = {
+        "key": str(data.get("key") or data.get("bark_key") or "").strip(),
+        "server": str(data.get("server") or data.get("bark_server") or "").strip(),
+        "group": str(data.get("group") or data.get("bark_group") or "").strip(),
+    }
+    result = await notify.send(
+        "发布台 · 测试通知",
+        "如果你看到这条，说明 Bark 配好了。",
+        user_id=user["id"],
+        bark_override=bark_override,
+    )
     return JSONResponse(result)
 
 
@@ -623,6 +1082,8 @@ async def usage_page(request: Request):
         return RedirectResponse("/login", status_code=303)
 
     uid = user["id"]
+    if tenant.needs_onboarding(uid):
+        return RedirectResponse("/onboarding", status_code=303)
     ai_cfg = tenant.get_effective_ai_config(uid)
     return templates.TemplateResponse("usage.html", {
         "request": request,
@@ -645,6 +1106,8 @@ async def source_page(request: Request, refresh: Optional[str] = None):
         return RedirectResponse("/login", status_code=303)
 
     uid = user["id"]
+    if tenant.needs_onboarding(uid):
+        return RedirectResponse("/onboarding", status_code=303)
     u_row = tenant.get_user_by_id(uid) or {}
     snap = await notion_db.get_database_snapshot(user_id=uid, force_refresh=bool(refresh))
     source_map = article.list_notion_source_map(user_id=uid)
@@ -708,6 +1171,8 @@ async def flow_page(request: Request):
         return RedirectResponse("/login", status_code=303)
 
     uid = user["id"]
+    if tenant.needs_onboarding(uid):
+        return RedirectResponse("/onboarding", status_code=303)
     u_row = tenant.get_user_by_id(uid) or {}
     snap = await notion_db.get_database_snapshot(user_id=uid, force_refresh=False)
     wh = notion_webhook.get_runtime_stats(uid)

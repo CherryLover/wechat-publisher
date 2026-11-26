@@ -41,6 +41,7 @@ TENANT_DEFAULTS: dict[str, Any] = {
         "appid": "",
         "appsecret": "",
         "author": "",
+        "verified": False,
     },
     "notion": {
         "token": "",
@@ -211,8 +212,20 @@ def bootstrap_owner() -> dict[str, Any]:
         try:
             row = conn.execute("SELECT * FROM users WHERE id = ?", (OWNER_ID,)).fetchone()
             if row:
+                raw_json = row["config_json"] or "{}"
                 user = _row_to_user(row)
                 conn.close()
+                # 兼容升级：旧版已有微信配置但尚未记录 verified 字段时自动补齐
+                try:
+                    raw_wx = (json.loads(raw_json).get("wechat") or {})
+                except Exception:
+                    raw_wx = {}
+                wx_u = (user.get("config") or {}).get("wechat") or {}
+                if wx_u.get("appid") and wx_u.get("appsecret") and "verified" not in raw_wx:
+                    cfg_patch = json.loads(json.dumps(user["config"]))
+                    cfg_patch["wechat"]["verified"] = True
+                    save_tenant_config(OWNER_ID, cfg_patch)
+                    user = get_user_by_id(OWNER_ID) or user
                 # 若已有微信配置但还未生成 seed，则补齐
                 return ensure_seed_if_ready(OWNER_ID) or user
 
@@ -235,6 +248,7 @@ def bootstrap_owner() -> dict[str, Any]:
                         "appid": appid,
                         "appsecret": appsecret,
                         "author": "程序杂念",
+                        "verified": bool(appid and appsecret),
                     },
                     "notion": {
                         "token": notion_tok,
@@ -347,11 +361,15 @@ def register_user(username: str, password: str, display_name: str = "") -> tuple
     if len(password or "") < password_auth.MIN_PASSWORD_LENGTH:
         return None, "short_password"
 
-    dname = (display_name or "").strip()[:32] or uname
+    raw_dname = (display_name or "").strip()[:32]
+    dname = raw_dname or uname
     uid = "u_" + secrets.token_hex(6)
     pw_hash = password_auth.hash_password(password)
     now = datetime.now().isoformat()
-    cfg_json = json.dumps(_encrypt_tenant_cfg(TENANT_DEFAULTS), ensure_ascii=False)
+    init_cfg = json.loads(json.dumps(TENANT_DEFAULTS))
+    if raw_dname:
+        init_cfg["wechat"]["author"] = raw_dname
+    cfg_json = json.dumps(_encrypt_tenant_cfg(init_cfg), ensure_ascii=False)
 
     conn = _connect()
     try:
@@ -511,6 +529,21 @@ def get_tenant_config(user_id: str) -> dict[str, Any]:
     return u["config"]
 
 
+def is_wechat_configured(user_id: str) -> bool:
+    """判断租户是否已完成微信公众号配置且通过连通性校验"""
+    wx = (get_tenant_config(user_id).get("wechat") or {})
+    return bool(
+        (wx.get("appid") or "").strip()
+        and (wx.get("appsecret") or "").strip()
+        and wx.get("verified")
+    )
+
+
+def needs_onboarding(user_id: str) -> bool:
+    """必填项未配置完成时每次登录/访问核心页都需要进入引导配置"""
+    return not is_wechat_configured(user_id)
+
+
 def save_tenant_config(user_id: str, cfg: dict[str, Any]) -> dict[str, Any]:
     """保存租户配置（加密敏感字段，并在微信密钥配齐时自动生成专属种子）"""
     if not get_user_by_id(user_id):
@@ -629,7 +662,7 @@ def list_users_with_stats() -> list[dict[str, Any]]:
             "display_name": u["display_name"],
             "role": u["role"],
             "status": u["status"],
-            "wechat_ready": bool(wx.get("appid") and wx.get("appsecret")),
+            "wechat_ready": bool(wx.get("appid") and wx.get("appsecret") and wx.get("verified")),
             "notion_ready": bool(nt.get("token") and nt.get("db_id")),
             "seed_ready": bool(u["mcp_token"] and u["webhook_token"]),
             "articles": art_counts.get(u["id"], 0),

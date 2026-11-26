@@ -96,6 +96,7 @@ class TestPasswordLoginRoutes(unittest.TestCase):
             patch.object(oidc, "REDIRECT_URI", "https://pub.example.com/auth/callback"),
             patch.object(oidc, "build_authorize_url", new=AsyncMock(return_value="https://id.example.com/authorize?x=1")),
             patch.object(password_auth, "rate_limiter", password_auth.LoginRateLimiter(max_attempts=3, window_seconds=300)),
+            patch.object(tenant, "needs_onboarding", return_value=False),
         ]
         for p in self.patches:
             p.start()
