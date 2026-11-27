@@ -51,16 +51,11 @@ h1{margin:0 0 6px;font-size:21px;font-weight:700}
       <div class="err">当前已暂停新用户注册，请联系管理员开通。</div>
       <div class="row-link"><a href="/login">← 返回登录</a></div>
       {% else %}
-      <p class="desc">平台免费使用；注册后请先验证微信公众号配置。</p>
+      <p class="desc">注册后请先完成微信公众号接入验证。</p>
 
       {% if error %}
       <div class="err">{{ error }}</div>
       {% endif %}
-
-      <div class="info">
-        <i data-lucide="sparkles" style="width:17px;height:17px;flex:none;margin-top:2px"></i>
-        <span>AI 自动配图目前由平台统一免费赠送，后续为覆盖算力成本可能单独收费。</span>
-      </div>
 
       <form method="post" action="/register">
         <div class="field">

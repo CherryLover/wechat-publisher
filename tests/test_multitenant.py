@@ -358,9 +358,15 @@ class TestMultiTenantEndToEnd(unittest.TestCase):
         self.assertEqual(eff["style"], "蓝白极简线稿")
         self.assertEqual(eff["skip_min_images"], 3)
 
-        # 普通用户页面展示免费告知，且绝不暴露平台密钥或模型配置
+        # 普通用户页面展示平台托管说明，不谈付费/免费/收费，且绝不暴露平台密钥或模型配置
         settings_html = self.client.get("/settings", cookies=ck).text
-        self.assertIn("免费赠送", settings_html)
+        onboarding_html = self.client.get("/onboarding", cookies=ck).text
+        login_html = self.client.get("/login").text
+        register_html = self.client.get("/register").text
+        for page_html in (settings_html, onboarding_html, login_html, register_html):
+            for banned in ("免费", "付费", "收费", "赠送", "算力成本", "维护成本", "福利"):
+                self.assertNotIn(banned, page_html)
+        self.assertIn("无需自行配置 API Key", settings_html)
         self.assertNotIn("sk-platform-only-key", settings_html)
         self.assertNotIn("ai.platform.test", settings_html)
 
