@@ -1,0 +1,47 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 420" fill="none">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="800" y2="420" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#F0FDF5"/>
+      <stop offset="55%" stop-color="#ECFDF5"/>
+      <stop offset="100%" stop-color="#EFF6FF"/>
+    </linearGradient>
+    <linearGradient id="accent" x1="120" y1="80" x2="680" y2="340" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#07C160"/>
+      <stop offset="100%" stop-color="#10B981"/>
+    </linearGradient>
+  </defs>
+  <rect width="800" height="420" rx="24" fill="url(#bg)"/>
+  <circle cx="690" cy="86" r="72" fill="#D1FAE5" opacity="0.7"/>
+  <circle cx="110" cy="340" r="90" fill="#DBEAFE" opacity="0.65"/>
+
+  <!-- Left card: Notion / Markdown -->
+  <rect x="78" y="96" width="186" height="228" rx="16" fill="#FFFFFF" stroke="#D1FAE5" stroke-width="2"/>
+  <rect x="102" y="122" width="44" height="44" rx="10" fill="#F0FDF5"/>
+  <path d="M115 138h18M115 147h14M115 156h10" stroke="#07C160" stroke-width="2.6" stroke-linecap="round"/>
+  <rect x="102" y="182" width="138" height="12" rx="6" fill="#1E293B" opacity="0.85"/>
+  <rect x="102" y="206" width="118" height="9" rx="4.5" fill="#94A3B8" opacity="0.55"/>
+  <rect x="102" y="224" width="132" height="9" rx="4.5" fill="#94A3B8" opacity="0.55"/>
+  <rect x="102" y="242" width="96" height="9" rx="4.5" fill="#94A3B8" opacity="0.55"/>
+  <rect x="102" y="274" width="76" height="24" rx="12" fill="#ECFDF5"/>
+  <text x="140" y="290" text-anchor="middle" font-family="-apple-system,PingFang SC,sans-serif" font-size="12" font-weight="600" fill="#059669">灵感文稿</text>
+
+  <!-- Center engine node -->
+  <path d="M276 210h62" stroke="#10B981" stroke-width="3" stroke-dasharray="6 6" stroke-linecap="round"/>
+  <path d="M462 210h62" stroke="#10B981" stroke-width="3" stroke-dasharray="6 6" stroke-linecap="round"/>
+  <rect x="342" y="138" width="116" height="144" rx="20" fill="url(#accent)"/>
+  <circle cx="400" cy="192" r="24" fill="#FFFFFF" fill-opacity="0.22"/>
+  <path d="M412 180l-22 10 8 4 10-9-7 11 5 6 6-22z" fill="#FFFFFF"/>
+  <text x="400" y="242" text-anchor="middle" font-family="-apple-system,PingFang SC,sans-serif" font-size="15" font-weight="700" fill="#FFFFFF">自动排版</text>
+  <text x="400" y="262" text-anchor="middle" font-family="-apple-system,PingFang SC,sans-serif" font-size="11.5" fill="#ECFDF5">配图 · 图床 · 主题</text>
+
+  <!-- Right card: WeChat Draft -->
+  <rect x="536" y="96" width="186" height="228" rx="16" fill="#FFFFFF" stroke="#BBF7D0" stroke-width="2"/>
+  <rect x="558" y="118" width="142" height="72" rx="10" fill="#F0FDF5"/>
+  <path d="M582 174l24-24 18 16 18-20 34 28H582z" fill="#34D399" opacity="0.85"/>
+  <circle cx="672" cy="138" r="8" fill="#FBBF24"/>
+  <rect x="558" y="206" width="128" height="11" rx="5.5" fill="#0F172A" opacity="0.85"/>
+  <rect x="558" y="227" width="142" height="8" rx="4" fill="#94A3B8" opacity="0.5"/>
+  <rect x="558" y="243" width="112" height="8" rx="4" fill="#94A3B8" opacity="0.5"/>
+  <rect x="558" y="272" width="142" height="30" rx="8" fill="#07C160"/>
+  <text x="629" y="292" text-anchor="middle" font-family="-apple-system,PingFang SC,sans-serif" font-size="12.5" font-weight="600" fill="#FFFFFF">推送公众号草稿箱</text>
+</svg>

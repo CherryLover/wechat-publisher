@@ -302,3 +302,30 @@ MCP JSON 配置：
 5. 携带私有 Token 的 REST API 请求头：
 Authorization: Bearer {mcp_token}
 """
+
+
+def render_ai_setup_prompt(base_url: str, mcp_token: str, author: str = "") -> str:
+    """生成一段可以直接发给 AI 助手的引导 Prompt，让 AI 自己对话、读取 Skill 并安装配置 MCP"""
+    mcp_url = build_mcp_url(base_url, mcp_token)
+    mcp_snippet = build_mcp_snippet(base_url, mcp_token)
+    urls = build_skill_urls(base_url, mcp_token)
+    if not mcp_token:
+        return ""
+    author_tip = f"（我的默认公众号作者是「{author}」）" if (author or "").strip() else ""
+    return f"""请帮我配置并安装「微信公众号发布台」的 MCP 与专属 Skill{author_tip}，让我后续可以直接用自然语言让你帮我排版、配图并发布文章到公众号草稿箱：
+
+1. 请先读取这份包含全部接口含义与使用说明的专属 Skill 文档：
+   {urls["skill_url"]}
+
+2. 请将我的私有 MCP Server 配置到当前客户端 / Agent 的 MCP 配置中：
+   - MCP 地址：{mcp_url}
+   - 标准 JSON 配置：
+{mcp_snippet}
+
+3. 如果你的运行环境支持本地 Skills 目录（例如 ~/.claude/skills/ 或 ~/.gemini/config/skills/），请运行以下安装命令把 wechat-publish Skill 和自动传图发布脚本安装到本地：
+   {urls["install_cmd"]}
+   （备用完整压缩包下载地址：{urls["zip_url"]}）
+
+完成以上步骤后，请向我汇报：
+- MCP 与 Skill 是否都已安装就绪；
+- 列出我可以对你说哪些指令（例如创建文章、切换排版主题、推送到公众号草稿箱）。"""

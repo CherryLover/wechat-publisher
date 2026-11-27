@@ -188,6 +188,8 @@ _DEMO_ARTICLE_MD = """# 把每周灵感冒泡成一篇好文章
 
 当你把笔记整理进 Notion，发布台会在后台完成主题排版、图片转存与草稿推送，你只需要专注于表达本身。
 
+![从灵感到公众号草稿的自动化工作流](/static/demo-article-img.svg)
+
 > 好排版不是喧宾夺主，而是让读者舒服地把整篇文章读完。
 
 ## 为什么选择自动化工作流
@@ -196,9 +198,17 @@ _DEMO_ARTICLE_MD = """# 把每周灵感冒泡成一篇好文章
 2. **多主题即时切换**：同一份 Markdown 文稿，可在简洁、暖刊或极客风之间自由预览与发布。
 3. **关键凭据加密保管**：AppSecret 与 Notion Token 均以 AES-256-GCM 密文形式独立存储。
 
+### 接入方式对比
+
+| 接入方式 | 适合场景 | 图片处理方式 |
+|---|---|---|
+| MCP 对话发布 | 在 Claude / Cursor 中边写边发 | 自动转存公网图与微信图床 |
+| Notion 触发 | 知识库文章状态流转自动同步 | 自动搬运 S3 图片并支持 AI 配图 |
+| 本地脚本 | Markdown + `.assets/` 批量上传 | 扫描本地相对路径一键上传 |
+
 ### 排版细节预览
 
-正文中的 `行内代码`、加粗重点与引用段落会随左侧选中的主题实时变化；如果你开启了 **AI 配图**，未配图的文章还会自动生成匹配语境的封面与插图。
+正文中的 `行内代码`、加粗重点、图文混排与数据表格都会随左侧选中的主题实时变化；如果你开启了 **AI 配图**，未配图的文章还会自动生成匹配语境的封面与插图。
 
 ---
 
@@ -244,7 +254,7 @@ async def _verify_wechat_credentials(
 
 
 def _build_connect_context(request: Request, u_row: Optional[dict]) -> dict:
-    """组装租户私有 MCP 地址、Skill 链接、安装命令与一键复制总包"""
+    """组装租户私有 MCP 地址、Skill 链接、安装命令、AI 配置 Prompt 与一键复制总包"""
     base = _base_url(request)
     row = u_row or {}
     mcp_tok = (row.get("mcp_token") or "").strip()
@@ -253,6 +263,7 @@ def _build_connect_context(request: Request, u_row: Optional[dict]) -> dict:
     mcp_url = skill_export.build_mcp_url(base, mcp_tok)
     mcp_snippet = skill_export.build_mcp_snippet(base, mcp_tok)
     bundle_text = skill_export.render_agent_bundle_text(base, mcp_tok, author)
+    ai_setup_prompt = skill_export.render_ai_setup_prompt(base, mcp_tok, author)
     return {
         "mcp_url": mcp_url,
         "mcp_snippet": mcp_snippet,
@@ -261,6 +272,7 @@ def _build_connect_context(request: Request, u_row: Optional[dict]) -> dict:
         "skill_script_url": urls["script_url"],
         "install_cmd": urls["install_cmd"],
         "bundle_text": bundle_text,
+        "ai_setup_prompt": ai_setup_prompt,
     }
 
 
@@ -552,6 +564,13 @@ body {{
   font-size: 13px;
   color: #6b7280;
 }}
+.demo-body img {{
+  max-width: 100%;
+  height: auto;
+  border-radius: 10px;
+  display: block;
+  margin: 14px auto;
+}}
 </style>
 </head>
 <body>
@@ -720,6 +739,20 @@ async def onboarding_step_wechat(request: Request):
         "message": "公众号校验通过！AppSecret 已通过 AES-256-GCM 算法加密存入数据库。",
         **conn_ctx,
     })
+
+
+@router.get("/onboarding/connect-info")
+async def onboarding_connect_info(request: Request):
+    """第 2 步分配/获取当前登录租户的专属 MCP 与 Skill 接入信息"""
+    user = current_user(request)
+    if not user:
+        return JSONResponse({"ok": False, "reason": "unauthorized"}, status_code=401)
+    uid = user["id"]
+    if tenant.needs_onboarding(uid):
+        return JSONResponse({"ok": False, "reason": "请先完成第 1 步微信公众号验证"}, status_code=400)
+    u_now = tenant.ensure_seed_if_ready(uid) or tenant.get_user_by_id(uid)
+    conn_ctx = _build_connect_context(request, u_now)
+    return JSONResponse({"ok": True, **conn_ctx})
 
 
 @router.post("/onboarding/step/connect")

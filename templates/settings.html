@@ -92,9 +92,17 @@ input.u-check:checked::before{transform:scale(1)}
 .status-inline.ok{color:#0b7a44}
 .status-inline.err{color:#b91c1c}
 .status-inline.warn{color:#92400e}
+.bark-guide{display:grid;grid-template-columns:minmax(0,1fr) 144px;gap:16px;align-items:center;background:#fffbeb;border:1px solid #fde68a;border-radius:10px;padding:14px 16px;margin-bottom:14px;color:#78350f}
+.bark-guide-title{font-size:14.5px;font-weight:700;color:#92400e;display:flex;align-items:center;gap:7px;margin:0 0 6px}
+.bark-guide-steps{margin:0 0 10px;padding-left:18px;font-size:13px;line-height:1.6;color:#78350f}
+.bark-qr-box{background:#fff;border:1px solid #fcd34d;border-radius:9px;padding:8px;text-align:center}
+.bark-qr-box img{width:112px;height:112px;display:block;margin:0 auto}
+.bark-qr-cap{font-size:11.5px;color:#92400e;margin-top:5px;font-weight:500}
+.appstore-btn{display:inline-flex;align-items:center;gap:7px;height:36px;padding:0 13px;border-radius:8px;background:#111827;color:#ffffff;font-size:13px;font-weight:600;text-decoration:none}
+.appstore-btn:hover{background:#000000;color:#ffffff}
 @keyframes shake{0%,100%{transform:translateX(0)}20%,60%{transform:translateX(-6px)}40%,80%{transform:translateX(6px)}}
 .shake{animation:shake .4s ease}
-@media (max-width:1020px){.grid{grid-template-columns:1fr}.themes{grid-template-columns:repeat(2,1fr)}.two{grid-template-columns:1fr}}
+@media (max-width:1020px){.grid{grid-template-columns:1fr}.themes{grid-template-columns:repeat(2,1fr)}.two,.bark-guide{grid-template-columns:1fr}}
 </style>
 </head>
 <body>
@@ -310,8 +318,24 @@ input.u-check:checked::before{transform:scale(1)}
               <b>说明：</b>支持通过 Bark 协议把「发布成功」「开始处理」以及运行过程中发生的<b>异常 Bug 告警</b>推送到手机。在 Bark App 复制设备 Key 与服务器地址即可；如果当前没有推送地址，可联系管理员申请获取。
             </div>
             {% if not notify_configured %}
-            <div class="info-box amber">
-              还没有配置 Bark 推送地址或设备 Key？如果没有相关信息，请<b>联系管理员申请获取</b>。
+            <div class="bark-guide">
+              <div>
+                <div class="bark-guide-title"><i data-lucide="smartphone" style="width:16px;height:16px"></i>还没有配置推送？推荐使用 iOS 版 Bark（安卓暂不支持此推送方式）</div>
+                <ol class="bark-guide-steps">
+                  <li>用 iPhone 扫描右侧二维码，或点击下方按钮前往 <b>App Store</b> 下载安装 Bark；</li>
+                  <li>打开 Bark App 首页，复制你的 <b>API Key（设备 Key）</b> 粘贴到下方即可；</li>
+                  <li>如无 iOS 设备或需要团队告警接收通道，可联系管理员申请获取。</li>
+                </ol>
+                <a class="appstore-btn" href="https://apps.apple.com/app/bark-custom-notifications/id1403753865" target="_blank" rel="noopener noreferrer">
+                  <i data-lucide="apple" style="width:15px;height:15px"></i>
+                  <span>前往 App Store 下载 Bark</span>
+                  <i data-lucide="external-link" style="width:13px;height:13px;opacity:.8"></i>
+                </a>
+              </div>
+              <div class="bark-qr-box">
+                <img src="/static/bark-appstore-qr.svg" alt="Bark App Store 下载二维码">
+                <div class="bark-qr-cap">iOS 扫码下载 Bark</div>
+              </div>
             </div>
             {% endif %}
             <div class="field">

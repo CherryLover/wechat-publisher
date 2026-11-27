@@ -177,12 +177,33 @@ pre.code{margin:10px 0 0;padding:12px 14px;background:#fff;border:1px solid #e4e
 .info-pop{display:none;margin:0 0 16px;padding:13px 16px;border-radius:10px;background:#f8fafc;border:1px solid #cbd5e1;font-size:13.5px;color:#334155;line-height:1.6}
 .info-pop.show{display:block;animation:popCheck .22s ease}
 
+/* 第 2 步：分配中状态 & AI 一键安装醒目引导 */
+.alloc-box{padding:44px 20px;text-align:center;display:flex;flex-direction:column;align-items:center;gap:12px}
+.alloc-spinner{width:50px;height:50px;border-radius:14px;background:#f0fdf5;border:1px solid #bdebd0;color:#07c160;display:flex;align-items:center;justify-content:center}
+.alloc-title{font-size:17px;font-weight:700;color:#09090b}
+.alloc-sub{font-size:14px;color:#71717a}
+.ai-hero{background:linear-gradient(135deg,#f0fdf5 0%,#ecfdf5 60%,#eff6ff 100%);border:1.5px solid #86efac;border-radius:14px;padding:20px 22px;margin-bottom:18px;box-shadow:0 4px 14px rgba(7,193,96,.08)}
+.ai-hero-top{display:flex;align-items:flex-start;justify-content:space-between;gap:14px;flex-wrap:wrap;margin-bottom:12px}
+.ai-hero-title{font-size:17px;font-weight:700;color:#065f46;display:flex;align-items:center;gap:8px;margin:0 0 4px}
+.ai-hero-desc{font-size:14px;color:#047857;margin:0;line-height:1.55}
+.ai-prompt-pre{margin:0;padding:12px 14px;background:#ffffff;border:1px solid #bbf7d0;border-radius:10px;font-family:-apple-system,BlinkMacSystemFont,"PingFang SC",monospace;font-size:13px;color:#1e293b;line-height:1.6;white-space:pre-wrap;word-break:break-word;max-height:190px;overflow:auto}
+
+/* Bark iOS 下载引导 + 二维码 */
+.bark-guide{display:grid;grid-template-columns:minmax(0,1fr) 156px;gap:18px;align-items:center;background:#fffbeb;border:1px solid #fde68a;border-radius:12px;padding:16px 18px;margin-bottom:16px;color:#78350f}
+.bark-guide-title{font-size:15px;font-weight:700;color:#92400e;display:flex;align-items:center;gap:8px;margin:0 0 8px}
+.bark-guide-steps{margin:0 0 12px;padding-left:18px;font-size:13.5px;line-height:1.65;color:#78350f}
+.bark-qr-box{background:#fff;border:1px solid #fcd34d;border-radius:10px;padding:10px;text-align:center}
+.bark-qr-box img{width:124px;height:124px;display:block;margin:0 auto}
+.bark-qr-cap{font-size:12px;color:#92400e;margin-top:6px;font-weight:500}
+.appstore-btn{display:inline-flex;align-items:center;gap:8px;height:38px;padding:0 14px;border-radius:9px;background:#111827;color:#ffffff;font-size:13.5px;font-weight:600;text-decoration:none;transition:background .15s}
+.appstore-btn:hover{background:#000000;color:#ffffff}
+
 @media (max-width:960px){
   .step-tabs{grid-template-columns:repeat(3,1fr)}
 }
 @media (max-width:760px){
   .step-tabs{grid-template-columns:1fr 1fr}
-  .two,.theme-split,.api-grid{grid-template-columns:1fr}
+  .two,.theme-split,.api-grid,.bark-guide{grid-template-columns:1fr}
   main{padding:20px 14px 48px}
 }
 </style>
@@ -331,58 +352,81 @@ pre.code{margin:10px 0 0;padding:12px 14px;background:#fff;border:1px solid #e4e
           </div>
         </div>
         <div class="card-body">
-          <!-- 1) 私有 MCP Server -->
-          <div class="connect-block">
-            <h3><i data-lucide="plug" style="width:18px;height:18px;color:#07c160"></i>你的私有 MCP Server 地址</h3>
-            <p class="hint" style="margin-top:2px">适配 Claude Desktop、Cursor、Antigravity、Cherry Studio 等所有支持 MCP 的 Agent；已与你的公众号严格绑定隔离。</p>
-            <div class="connect-row">
-              <input id="conn-mcp-url" type="text" value="{{ mcp_url }}" readonly>
-              <button type="button" class="btn" onclick="copyWithToast(document.getElementById('conn-mcp-url').value, '私有 MCP 地址已复制')"><i data-lucide="copy" style="width:15px;height:15px"></i>复制地址</button>
-            </div>
-            <details style="margin-top:10px">
-              <summary style="font-size:13.5px;color:#52525b;cursor:pointer;font-weight:500">查看 MCP 客户端 JSON 配置片段</summary>
-              <div style="position:relative;margin-top:8px">
-                <pre class="code" id="conn-mcp-json">{{ mcp_snippet }}</pre>
-                <button type="button" class="btn btn-sm" style="margin-top:8px" onclick="copyWithToast(document.getElementById('conn-mcp-json').textContent, 'MCP JSON 已复制')"><i data-lucide="copy" style="width:13px;height:13px"></i>复制 JSON</button>
-              </div>
-            </details>
+          <!-- 状态提示：正在为您分配专属链接 -->
+          <div class="alloc-box" id="conn-allocating" style="display:none">
+            <div class="alloc-spinner"><i data-lucide="loader-2" class="spin" style="width:24px;height:24px"></i></div>
+            <div class="alloc-title">正在为您分配专属链接...</div>
+            <div class="alloc-sub">正在生成独立隔离的私有 MCP 地址与专属 Agent Skill 文档，请稍候</div>
           </div>
 
-          <!-- 2) 专属 Skill（在线链接 + API/用法 + 下载安装指引） -->
-          <div class="connect-block" style="margin-bottom:0">
-            <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap">
-              <h3><i data-lucide="book-open-check" style="width:18px;height:18px;color:#07c160"></i>专属 Agent Skill（wechat-publish）</h3>
-              <a class="btn btn-sm" id="conn-skill-zip-link" href="{{ skill_zip_url or '#' }}" download="wechat-publish.zip">
-                <i data-lucide="download" style="width:14px;height:14px"></i>下载 Skill 压缩包（.zip）
-              </a>
-            </div>
-            <p class="hint" style="margin-top:4px">
-              该 Skill 内置了全部 <b>MCP 工具说明</b> 与 <b>REST API 文档</b>（文章创建/更新/预览/发布、图片上传、主题列表），并已写入你的私有认证凭证。
-              <b>把下方链接直接发给任意 AI 助手，AI 就能读取并自动完成安装与调用：</b>
-            </p>
-
-            <div class="connect-row">
-              <input id="conn-skill-url" type="text" value="{{ skill_url }}" readonly>
-              <button type="button" class="btn" onclick="copyWithToast(document.getElementById('conn-skill-url').value, 'Skill 请求地址已复制，可直接发给 AI')"><i data-lucide="copy" style="width:15px;height:15px"></i>复制链接</button>
-            </div>
-
-            <div style="margin-top:14px">
-              <div style="font-size:13.5px;font-weight:600;color:#27272a;margin-bottom:6px">本地终端一键安装命令（写入 <code style="font-family:monospace">~/.claude/skills/wechat-publish/</code>）</div>
-              <div class="connect-row" style="margin-top:0">
-                <input id="conn-install-cmd" type="text" value="{{ install_cmd }}" readonly>
-                <button type="button" class="btn" onclick="copyWithToast(document.getElementById('conn-install-cmd').value, '安装命令已复制')"><i data-lucide="terminal" style="width:15px;height:15px"></i>复制命令</button>
+          <div id="conn-ready">
+            <!-- 醒目引导：一键复制 Prompt 发给 AI 自动安装配置 -->
+            <div class="ai-hero">
+              <div class="ai-hero-top">
+                <div>
+                  <h3 class="ai-hero-title"><i data-lucide="sparkles" style="width:19px;height:19px;color:#07c160"></i>不知道怎么配置？直接让 AI 帮你装！</h3>
+                  <p class="ai-hero-desc">我们已经把你的私有 MCP、Skill 在线链接与全部用法整理成一段引导词。点击右侧按钮复制后直接发给 AI 助手，让它跟你对话并自动完成配置与安装。</p>
+                </div>
+                <button type="button" class="btn btn-primary" id="ob-copy-ai-prompt-btn" style="flex:none">
+                  <i data-lucide="message-square-share" style="width:16px;height:16px"></i>一键复制发给 AI 助手
+                </button>
               </div>
-              <p class="hint">若你使用 Antigravity / Codex，也可将保存路径替换为 <code>~/.gemini/config/skills/wechat-publish/</code> 后再运行。安装完成后执行 <code>python3 ~/.claude/skills/wechat-publish/scripts/publish.py &lt;文章.md&gt;</code> 即可自动传图发布。</p>
+              <pre class="ai-prompt-pre" id="conn-ai-prompt">{{ ai_setup_prompt }}</pre>
             </div>
 
-            <div class="api-grid">
-              <div class="api-pill"><code>create_article</code> / <code>update_article</code><br><span style="color:#71717a">通过 Markdown 创建或更新文章</span></div>
-              <div class="api-pill"><code>save_image</code> / <code>POST /api/images</code><br><span style="color:#71717a">本地配图上传并自动返回公网图床 URL</span></div>
-              <div class="api-pill"><code>publish_to_draft</code> / <code>POST .../publish</code><br><span style="color:#71717a">转存微信图床并推送到公众号草稿箱</span></div>
-              <div class="api-pill"><code>GET /skill/.../SKILL.md</code><br><span style="color:#71717a">含完整参数定义、主题清单与调用示例</span></div>
+            <!-- 1) 私有 MCP Server -->
+            <div class="connect-block">
+              <h3><i data-lucide="plug" style="width:18px;height:18px;color:#07c160"></i>你的私有 MCP Server 地址</h3>
+              <p class="hint" style="margin-top:2px">适配 Claude Desktop、Cursor、Antigravity、Cherry Studio 等所有支持 MCP 的 Agent；已与你的公众号严格绑定隔离。</p>
+              <div class="connect-row">
+                <input id="conn-mcp-url" type="text" value="{{ mcp_url }}" readonly>
+                <button type="button" class="btn" onclick="copyWithToast(document.getElementById('conn-mcp-url').value, '私有 MCP 地址已复制')"><i data-lucide="copy" style="width:15px;height:15px"></i>复制地址</button>
+              </div>
+              <details style="margin-top:10px">
+                <summary style="font-size:13.5px;color:#52525b;cursor:pointer;font-weight:500">查看 MCP 客户端 JSON 配置片段</summary>
+                <div style="position:relative;margin-top:8px">
+                  <pre class="code" id="conn-mcp-json">{{ mcp_snippet }}</pre>
+                  <button type="button" class="btn btn-sm" style="margin-top:8px" onclick="copyWithToast(document.getElementById('conn-mcp-json').textContent, 'MCP JSON 已复制')"><i data-lucide="copy" style="width:13px;height:13px"></i>复制 JSON</button>
+                </div>
+              </details>
             </div>
+
+            <!-- 2) 专属 Skill（在线链接 + API/用法 + 下载安装指引） -->
+            <div class="connect-block" style="margin-bottom:0">
+              <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap">
+                <h3><i data-lucide="book-open-check" style="width:18px;height:18px;color:#07c160"></i>专属 Agent Skill（wechat-publish）</h3>
+                <a class="btn btn-sm" id="conn-skill-zip-link" href="{{ skill_zip_url or '#' }}" download="wechat-publish.zip">
+                  <i data-lucide="download" style="width:14px;height:14px"></i>下载 Skill 压缩包（.zip）
+                </a>
+              </div>
+              <p class="hint" style="margin-top:4px">
+                该 Skill 内置了全部 <b>MCP 工具说明</b> 与 <b>REST API 文档</b>（文章创建/更新/预览/发布、图片上传、主题列表），并已写入你的私有认证凭证。
+                <b>把下方链接直接发给任意 AI 助手，AI 就能读取并自动完成安装与调用：</b>
+              </p>
+
+              <div class="connect-row">
+                <input id="conn-skill-url" type="text" value="{{ skill_url }}" readonly>
+                <button type="button" class="btn" onclick="copyWithToast(document.getElementById('conn-skill-url').value, 'Skill 请求地址已复制，可直接发给 AI')"><i data-lucide="copy" style="width:15px;height:15px"></i>复制链接</button>
+              </div>
+
+              <div style="margin-top:14px">
+                <div style="font-size:13.5px;font-weight:600;color:#27272a;margin-bottom:6px">本地终端一键安装命令（写入 <code style="font-family:monospace">~/.claude/skills/wechat-publish/</code>）</div>
+                <div class="connect-row" style="margin-top:0">
+                  <input id="conn-install-cmd" type="text" value="{{ install_cmd }}" readonly>
+                  <button type="button" class="btn" onclick="copyWithToast(document.getElementById('conn-install-cmd').value, '安装命令已复制')"><i data-lucide="terminal" style="width:15px;height:15px"></i>复制命令</button>
+                </div>
+                <p class="hint">若你使用 Antigravity / Codex，也可将保存路径替换为 <code>~/.gemini/config/skills/wechat-publish/</code> 后再运行。安装完成后执行 <code>python3 ~/.claude/skills/wechat-publish/scripts/publish.py &lt;文章.md&gt;</code> 即可自动传图发布。</p>
+              </div>
+
+              <div class="api-grid">
+                <div class="api-pill"><code>create_article</code> / <code>update_article</code><br><span style="color:#71717a">通过 Markdown 创建或更新文章</span></div>
+                <div class="api-pill"><code>save_image</code> / <code>POST /api/images</code><br><span style="color:#71717a">本地配图上传并自动返回公网图床 URL</span></div>
+                <div class="api-pill"><code>publish_to_draft</code> / <code>POST .../publish</code><br><span style="color:#71717a">转存微信图床并推送到公众号草稿箱</span></div>
+                <div class="api-pill"><code>GET /skill/.../SKILL.md</code><br><span style="color:#71717a">含完整参数定义、主题清单与调用示例</span></div>
+              </div>
+            </div>
+            <textarea id="conn-bundle-store" style="display:none">{{ bundle_text }}</textarea>
           </div>
-          <textarea id="conn-bundle-store" style="display:none">{{ bundle_text }}</textarea>
         </div>
         <div class="card-foot">
           <button type="button" class="btn btn-ghost" onclick="goStep('wechat')"><i data-lucide="arrow-left" style="width:16px;height:16px"></i>上一步</button>
@@ -592,10 +636,23 @@ pre.code{margin:10px 0 0;padding:12px 14px;background:#fff;border:1px solid #e4e
           </div>
 
           {% if not notify_configured %}
-          <div class="info-box amber">
-            <i data-lucide="life-buoy" style="width:20px;height:20px;flex:none;margin-top:2px"></i>
+          <div class="bark-guide">
             <div>
-              <b>暂无推送配置？</b>如果你还没有 Bark 推送地址或设备 Key，可以跳过此步，或<b>联系管理员申请获取</b>团队专用告警推送通道。
+              <div class="bark-guide-title"><i data-lucide="smartphone" style="width:17px;height:17px"></i>还没有推送配置？推荐使用 iOS 版 Bark（安卓暂不支持此推送方式）</div>
+              <ol class="bark-guide-steps">
+                <li>用 iPhone 扫描右侧二维码，或点击下方按钮跳转 <b>App Store</b> 下载安装 Bark App；</li>
+                <li>打开 Bark 首页，复制你的 <b>API Key（设备 Key）</b>；</li>
+                <li>将 API Key 粘贴到下方输入框并点击「发送测试通知」即可使用（若无 iOS 设备也可联系管理员申请协助）。</li>
+              </ol>
+              <a class="appstore-btn" href="https://apps.apple.com/app/bark-custom-notifications/id1403753865" target="_blank" rel="noopener noreferrer">
+                <i data-lucide="apple" style="width:16px;height:16px"></i>
+                <span>前往 App Store 下载 Bark</span>
+                <i data-lucide="external-link" style="width:14px;height:14px;opacity:.8"></i>
+              </a>
+            </div>
+            <div class="bark-qr-box">
+              <img src="/static/bark-appstore-qr.svg" alt="Bark App Store 下载二维码">
+              <div class="bark-qr-cap">iOS 扫码下载 Bark</div>
             </div>
           </div>
           {% endif %}
@@ -719,6 +776,31 @@ function updateConnectPanel(d) {
   if (d.skill_zip_url) document.getElementById('conn-skill-zip-link').href = d.skill_zip_url;
   if (d.install_cmd) document.getElementById('conn-install-cmd').value = d.install_cmd;
   if (d.bundle_text) document.getElementById('conn-bundle-store').value = d.bundle_text;
+  if (d.ai_setup_prompt) document.getElementById('conn-ai-prompt').textContent = d.ai_setup_prompt;
+}
+
+async function enterConnectStep() {
+  var allocEl = document.getElementById('conn-allocating');
+  var readyEl = document.getElementById('conn-ready');
+  if (allocEl && readyEl) {
+    allocEl.style.display = 'flex';
+    readyEl.style.display = 'none';
+  }
+  var minWait = new Promise(function (resolve) { setTimeout(resolve, 460); });
+  try {
+    var resp = await fetch('/onboarding/connect-info');
+    var data = resp.ok ? await resp.json() : null;
+    await minWait;
+    if (data && data.ok) updateConnectPanel(data);
+  } catch (e) {
+    await minWait;
+  }
+  if (allocEl && readyEl) {
+    allocEl.style.display = 'none';
+    readyEl.style.display = 'block';
+    readyEl.classList.add('pop');
+  }
+  if (window.lucide) lucide.createIcons();
 }
 
 function goStep(stepId) {
@@ -761,6 +843,9 @@ function goStep(stepId) {
       }
     }
   });
+  if (stepId === 'connect') {
+    enterConnectStep();
+  }
   if (window.lucide) lucide.createIcons();
 }
 
@@ -914,6 +999,9 @@ document.getElementById('ob-save-wx-btn').addEventListener('click', async functi
 });
 
 // 第 2 步：MCP 与 Skill 一键复制及前进/跳过
+document.getElementById('ob-copy-ai-prompt-btn').addEventListener('click', function () {
+  copyWithToast(document.getElementById('conn-ai-prompt').textContent, '已复制 AI 引导话术，直接发给你的 AI 助手即可');
+});
 document.getElementById('ob-copy-bundle-btn').addEventListener('click', function () {
   copyWithToast(document.getElementById('conn-bundle-store').value, '已一键复制 MCP 地址与 Skill 全套安装用法');
 });

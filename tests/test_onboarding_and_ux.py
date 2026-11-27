@@ -227,10 +227,35 @@ class TestOnboardingAndUX(unittest.TestCase):
         self.assertTrue(r_done.json()["done"])
         self.assertEqual(self.client.get("/", cookies=ck, follow_redirects=False).status_code, 200)
 
-        # 示例主题预览路由工作
+        # 示例主题预览路由工作（同时包含图文混排图片与 Markdown 表格）
         demo_html = self.client.get("/preview-demo?theme=lapis", cookies=ck)
         self.assertEqual(demo_html.status_code, 200)
         self.assertIn("示例文案", demo_html.text)
+        self.assertIn("/static/demo-article-img.svg", demo_html.text)
+        self.assertIn("<table", demo_html.text)
+
+        # 第 2 步动态分配信息接口包含私有 MCP、Skill 与 AI 引导话术
+        r_ci = self.client.get("/onboarding/connect-info", cookies=ck)
+        self.assertEqual(r_ci.status_code, 200)
+        ci = r_ci.json()
+        self.assertTrue(ci["ok"])
+        self.assertIn("/mcp/mcp_", ci["mcp_url"])
+        self.assertIn("/skill/mcp_", ci["skill_url"])
+        self.assertIn("MCP", ci["ai_setup_prompt"])
+        self.assertIn(ci["skill_url"], ci["ai_setup_prompt"])
+
+        # 未配置 Bark 时页面提供 iOS 下载引导（注明安卓暂不支持）、二维码与 target=_blank 的 App Store 链接
+        ob_full = self.client.get("/onboarding", cookies=ck).text
+        self.assertIn("正在为您分配专属链接", ob_full)
+        self.assertIn("安卓暂不支持", ob_full)
+        self.assertIn("/static/bark-appstore-qr.svg", ob_full)
+        self.assertIn("https://apps.apple.com/app/bark-custom-notifications/id1403753865", ob_full)
+        self.assertIn('target="_blank"', ob_full)
+
+        settings_full = self.client.get("/settings", cookies=ck).text
+        self.assertIn("安卓暂不支持", settings_full)
+        self.assertIn("/static/bark-appstore-qr.svg", settings_full)
+        self.assertIn('target="_blank"', settings_full)
 
     def test_7_day_session_and_sliding_refresh(self):
         self.assertEqual(oidc.SESSION_TTL, 7 * 24 * 3600)
@@ -276,6 +301,8 @@ class TestOnboardingAndUX(unittest.TestCase):
         self.assertEqual(self.client.get("/favicon.svg").status_code, 200)
         self.assertEqual(self.client.get("/favicon.ico").status_code, 200)
         self.assertEqual(self.client.get("/static/lucide.min.js").status_code, 200)
+        self.assertEqual(self.client.get("/static/bark-appstore-qr.svg").status_code, 200)
+        self.assertEqual(self.client.get("/static/demo-article-img.svg").status_code, 200)
 
     def test_main_loads_dotenv_before_local_module_imports(self):
         main_src = Path(app_main.__file__).read_text(encoding="utf-8")
