@@ -192,13 +192,18 @@ main{max-width:1280px;margin:0 auto;padding:18px 24px 44px}
         </div>
       </div>
 
-      <a class="node-card {{ '' if mcp_ready else 'muted' }}" href="/settings" data-side="left" data-active="{{ '1' if mcp_ready else '0' }}">
+      <a class="node-card {{ '' if mcp_ready else 'muted' }}" href="/onboarding?step=connect" data-side="left" data-active="{{ '1' if mcp_ready else '0' }}">
         <div class="node-top">
           <span class="dot {{ 'on' if mcp_ready else 'off' }}"></span>
-          <span class="node-title">专属 MCP / REST API</span>
+          <span class="node-title">专属 MCP / Agent Skill</span>
           <span class="node-right {{ '' if mcp_ready else 'dim' }}">{{ '已激活' if mcp_ready else '待配公众号' }}</span>
         </div>
-        <div class="node-sub">支持外部 Agent / CLI 通过你的专属地址直接创建文章、预览排版并推送到草稿箱</div>
+        <div class="node-sub">点击获取私有 MCP 地址、Skill 安装包与在线安装链接（支持 AI 自动安装）</div>
+        {% if skill_url %}
+        <div class="node-meta" style="margin-top:8px">
+          <div style="font-size:11px;color:#059669;word-break:break-all;font-family:ui-monospace,SFMono-Regular,Menlo,monospace">Skill: {{ skill_url }}</div>
+        </div>
+        {% endif %}
       </a>
     </div>
 

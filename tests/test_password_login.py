@@ -118,7 +118,9 @@ class TestPasswordLoginRoutes(unittest.TestCase):
     def test_admin_password_setup_and_login_rate_limit(self):
         resp = self.client.get("/login")
         self.assertEqual(resp.status_code, 200)
-        self.assertIn("使用 Pocket ID 登录", resp.text)
+        self.assertIn("使用 Passkey 登录", resp.text)
+        self.assertNotIn("管理员默认 admin", resp.text)
+        self.assertNotIn("管理员快捷通道", resp.text)
         self.assertIn("/login/password", resp.text)
 
         # 管理员尚未设置密码时登录失败
@@ -181,7 +183,7 @@ class TestPasswordLoginRoutes(unittest.TestCase):
         with patch.object(oidc, "build_authorize_url", new=AsyncMock(side_effect=RuntimeError("OIDC down"))):
             resp = self.client.get("/login")
             self.assertEqual(resp.status_code, 200)
-            self.assertIn("Pocket ID 暂时不可用", resp.text)
+            self.assertIn("Passkey 登录暂时不可用", resp.text)
             self.assertIn("/login/password", resp.text)
 
 

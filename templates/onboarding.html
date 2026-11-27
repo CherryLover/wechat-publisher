@@ -12,7 +12,7 @@
 body{margin:0;background:#f8fafb;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif;-webkit-font-smoothing:antialiased;color:#09090b;font-size:15px;line-height:1.6}
 a{color:inherit;text-decoration:none}
 .top{background:#fff;border-bottom:1px solid #e4e4e7}
-.top-inner{max-width:1120px;margin:0 auto;padding:0 24px;height:62px;display:flex;align-items:center;gap:18px}
+.top-inner{max-width:1180px;margin:0 auto;padding:0 24px;height:62px;display:flex;align-items:center;gap:18px}
 .brand{display:flex;align-items:center;gap:10px}
 .mark{width:34px;height:34px;border-radius:9px;background:#07c160;display:flex;align-items:center;justify-content:center;color:#fff}
 .brand-name{font-size:16px;font-weight:600}
@@ -23,24 +23,28 @@ a{color:inherit;text-decoration:none}
 .icon-link{display:inline-flex;align-items:center;gap:5px;padding:6px 10px;border-radius:8px;color:#71717a;font-size:14px}
 .icon-link:hover{background:#f4f4f5;color:#09090b}
 
-main{max-width:1020px;margin:0 auto;padding:28px 24px 64px}
+main{max-width:1120px;margin:0 auto;padding:28px 24px 72px}
 .hero{margin-bottom:24px;display:flex;align-items:flex-end;justify-content:space-between;gap:16px;flex-wrap:wrap}
 h1{margin:0;font-size:26px;font-weight:700;letter-spacing:-.3px}
 .sub{margin:6px 0 0;font-size:15px;color:#71717a}
 
-/* 进度条与步骤导航 */
+/* 顶部 Toast 提示（复制不改变按钮尺寸，避免页面跳动） */
+.toast{position:fixed;top:20px;left:50%;transform:translate(-50%,-16px);background:#09090b;color:#fff;padding:10px 18px;border-radius:10px;font-size:14px;font-weight:500;display:inline-flex;align-items:center;gap:8px;box-shadow:0 10px 28px rgba(0,0,0,.18);opacity:0;pointer-events:none;transition:all .24s cubic-bezier(.22,1,.36,1);z-index:999}
+.toast.show{opacity:1;transform:translate(-50%,0)}
+
+/* 进度条与 6 步导航 */
 .stepper{background:#fff;border:1px solid #e4e4e7;border-radius:14px;padding:18px 22px 20px;margin-bottom:22px;box-shadow:0 1px 3px rgba(0,0,0,.04)}
 .prog-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;font-size:14px;color:#52525b}
 .prog-head b{color:#09090b}
 .prog-track{width:100%;height:8px;background:#f4f4f5;border-radius:999px;overflow:hidden;margin-bottom:16px}
-.prog-fill{height:100%;background:linear-gradient(90deg,#07c160,#10b981);border-radius:999px;width:20%;transition:width .48s cubic-bezier(.22,1,.36,1)}
-.step-tabs{display:grid;grid-template-columns:repeat(5,1fr);gap:8px}
-.step-tab{display:flex;align-items:center;gap:9px;padding:10px 12px;border:1px solid #e4e4e7;border-radius:10px;background:#fafafa;cursor:pointer;text-align:left;font-family:inherit;transition:all .2s}
+.prog-fill{height:100%;background:linear-gradient(90deg,#07c160,#10b981);border-radius:999px;width:17%;transition:width .48s cubic-bezier(.22,1,.36,1)}
+.step-tabs{display:grid;grid-template-columns:repeat(6,1fr);gap:8px}
+.step-tab{display:flex;align-items:center;gap:8px;padding:10px 11px;border:1px solid #e4e4e7;border-radius:10px;background:#fafafa;cursor:pointer;text-align:left;font-family:inherit;transition:all .2s;min-width:0}
 .step-tab:hover:not(:disabled){border-color:#cbd5e1;background:#fff}
-.step-tab:disabled{opacity:.55;cursor:not-allowed}
+.step-tab:disabled{opacity:.52;cursor:not-allowed}
 .step-tab.active{border-color:#07c160;background:#f0fdf5;box-shadow:0 0 0 3px rgba(7,193,96,.12)}
 .step-tab.done{border-color:#bdebd0;background:#f6fef9}
-.step-num{width:26px;height:26px;border-radius:50%;background:#e4e4e7;color:#52525b;font-size:13px;font-weight:600;display:flex;align-items:center;justify-content:center;flex:none;transition:all .25s}
+.step-num{width:25px;height:25px;border-radius:50%;background:#e4e4e7;color:#52525b;font-size:13px;font-weight:600;display:flex;align-items:center;justify-content:center;flex:none;transition:all .25s}
 .step-tab.active .step-num{background:#07c160;color:#fff}
 .step-tab.done .step-num{background:#10b981;color:#fff}
 .step-meta{min-width:0}
@@ -63,9 +67,9 @@ h1{margin:0;font-size:26px;font-weight:700;letter-spacing:-.3px}
 .pop{animation:popCheck .42s cubic-bezier(.22,1,.36,1)}
 
 .card{background:#fff;border:1px solid #e4e4e7;border-radius:14px;box-shadow:0 2px 8px rgba(0,0,0,.04);overflow:hidden}
-.card-head{padding:20px 26px 16px;border-bottom:1px solid #f4f4f5;display:flex;align-items:center;gap:12px}
-.card-icon{width:40px;height:40px;border-radius:10px;background:#f0fdf5;color:#07c160;display:flex;align-items:center;justify-content:center;flex:none}
-.card-head h2{margin:0;font-size:19px;font-weight:700}
+.card-head{padding:20px 26px 16px;border-bottom:1px solid #f4f4f5;display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.card-icon{width:42px;height:42px;border-radius:11px;background:#f0fdf5;color:#07c160;display:flex;align-items:center;justify-content:center;flex:none}
+.card-head h2{margin:0;font-size:19px;font-weight:700;display:flex;align-items:center;gap:8px}
 .card-head p{margin:3px 0 0;font-size:14px;color:#71717a}
 .card-body{padding:22px 26px 24px}
 .card-foot{padding:16px 26px;border-top:1px solid #f4f4f5;background:#fafafa;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
@@ -73,13 +77,18 @@ h1{margin:0;font-size:26px;font-weight:700;letter-spacing:-.3px}
 .badge{display:inline-flex;align-items:center;gap:5px;border:1px solid #d5f2e3;background:#f0fdf5;color:#0b7a44;font-size:13px;font-weight:500;padding:3px 10px;border-radius:999px;white-space:nowrap}
 .badge.amber{border-color:#fde68a;background:#fffbeb;color:#92400e}
 .badge.gray{border-color:#e4e4e7;background:#fafafa;color:#52525b}
+.badge.blue{border-color:#bfdbfe;background:#eff6ff;color:#1d4ed8}
+
 .info-box{background:#eff6ff;border:1px solid #bfdbfe;color:#1e40af;font-size:14px;padding:13px 16px;border-radius:10px;margin-bottom:18px;line-height:1.65;display:flex;align-items:flex-start;gap:10px}
 .info-box.green{background:#f0fdf5;border-color:#bdebd0;color:#0b7a44}
+.info-box.amber{background:#fffbeb;border-color:#fde68a;color:#92400e}
+
 .field{margin-bottom:16px}
 .two{display:grid;grid-template-columns:1fr 1fr;gap:16px}
 label.lbl{display:flex;align-items:center;gap:8px;font-size:14px;font-weight:600;margin-bottom:7px;color:#18181b}
 .pw-wrap{position:relative}
 input[type=text],input[type=password],select{width:100%;height:44px;padding:0 14px;border:1px solid #d4d4d8;border-radius:9px;font-size:15px;color:#09090b;background:#fff;font-family:inherit;transition:border-color .15s,box-shadow .15s}
+select{appearance:none;-webkit-appearance:none;padding-right:38px;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%2371717a' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 12px center;cursor:pointer}
 .pw-wrap input{padding-right:44px}
 input[type=text]:focus,input[type=password]:focus,select:focus{outline:none;border-color:#07c160;box-shadow:0 0 0 3px rgba(7,193,96,.12)}
 .pw-eye{position:absolute;top:50%;right:8px;transform:translateY(-50%);width:32px;height:32px;border:none;border-radius:7px;background:transparent;color:#71717a;display:inline-flex;align-items:center;justify-content:center;cursor:pointer}
@@ -87,22 +96,49 @@ input[type=text]:focus,input[type=password]:focus,select:focus{outline:none;bord
 .hint{margin:7px 0 0;font-size:13px;color:#71717a;line-height:1.55}
 .parsed-pill{display:inline-flex;align-items:center;gap:6px;margin-top:8px;padding:4px 10px;border-radius:7px;background:#f0fdf5;border:1px solid #bdebd0;color:#0b7a44;font-size:13px;font-family:ui-monospace,SFMono-Regular,Menlo,monospace}
 
-.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;height:42px;padding:0 18px;border:1px solid #d4d4d8;border-radius:9px;background:#fff;font-size:15px;font-weight:500;color:#09090b;font-family:inherit;cursor:pointer;transition:all .15s}
+/* 统一按钮（固定不跳动） */
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;height:42px;padding:0 18px;border:1px solid #d4d4d8;border-radius:9px;background:#fff;font-size:15px;font-weight:500;color:#09090b;font-family:inherit;cursor:pointer;transition:background .15s,border-color .15s;white-space:nowrap}
 .btn:hover:not(:disabled){background:#f4f4f5}
 .btn:disabled{opacity:.6;cursor:not-allowed}
 .btn-primary{background:#07c160;border:none;color:#fff;font-weight:600}
 .btn-primary:hover:not(:disabled){background:#06a852}
 .btn-ghost{background:transparent;border-color:transparent;color:#71717a}
 .btn-ghost:hover:not(:disabled){background:#f4f4f5;color:#09090b}
-.btn-sm{height:30px;padding:0 10px;font-size:13px;border-radius:7px}
+.btn-sm{height:32px;padding:0 12px;font-size:13px;border-radius:7px}
 
-/* 测试结果状态框 */
+/* 统一设计规范控件：Checkbox、Switch、Number */
+.switch{position:relative;display:inline-flex;align-items:center;gap:10px;cursor:pointer;font-size:15px;font-weight:500;user-select:none}
+.switch input{position:absolute;opacity:0;width:0;height:0}
+.switch .track{width:46px;height:26px;border-radius:999px;background:#d4d4d8;position:relative;transition:background .18s;flex:none}
+.switch .thumb{position:absolute;top:3px;left:3px;width:20px;height:20px;border-radius:50%;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.22);transition:transform .18s cubic-bezier(.22,1,.36,1)}
+.switch input:checked + .track{background:#07c160}
+.switch input:checked + .track .thumb{transform:translateX(20px)}
+.switch input:focus-visible + .track{box-shadow:0 0 0 3px rgba(7,193,96,.18)}
+
+input.u-check{appearance:none;-webkit-appearance:none;width:19px;height:19px;border:1.6px solid #cbd5e1;border-radius:6px;background:#fff;display:inline-grid;place-content:center;cursor:pointer;flex:none;margin:0;transition:all .15s}
+input.u-check::before{content:"";width:11px;height:11px;transform:scale(0);transition:transform .12s ease;background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='3.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='20 6 9 17 4 12'/%3E%3C/svg%3E") center/contain no-repeat}
+input.u-check:checked{background:#07c160;border-color:#07c160}
+input.u-check:checked::before{transform:scale(1)}
+input.u-check:focus-visible{outline:none;box-shadow:0 0 0 3px rgba(7,193,96,.16)}
+.checks{display:flex;flex-direction:column;gap:12px;margin-top:8px}
+.check{display:flex;align-items:center;gap:10px;font-size:15px;color:#27272a;cursor:pointer;user-select:none}
+.num-inline{width:66px;height:34px;padding:0 8px;border:1px solid #d4d4d8;border-radius:8px;font-size:14px;text-align:center;color:#09090b;background:#fff;font-family:inherit}
+.num-inline:focus{outline:none;border-color:#07c160;box-shadow:0 0 0 3px rgba(7,193,96,.12)}
+
+/* 状态框与列表预览 */
 .test-bar{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-top:6px}
 .status-banner{display:none;align-items:center;gap:10px;padding:12px 15px;border-radius:10px;font-size:14px;line-height:1.55;margin-top:14px}
 .status-banner.show{display:flex}
 .status-banner.loading{background:#f8fafc;border:1px solid #e2e8f0;color:#334155}
 .status-banner.ok{background:#f0fdf5;border:1px solid #bdebd0;color:#0b7a44}
 .status-banner.err{background:#fef2f2;border:1px solid #fecaca;color:#b91c1c}
+.status-banner.warn{background:#fffbeb;border:1px solid #fde68a;color:#92400e}
+
+.notion-preview{display:none;margin-top:14px;border:1px solid #e4e4e7;border-radius:10px;overflow:hidden;background:#fafafa}
+.notion-preview.show{display:block}
+.notion-preview-head{padding:10px 14px;border-bottom:1px solid #e4e4e7;font-size:13px;font-weight:600;color:#3f3f46;display:flex;align-items:center;justify-content:space-between}
+.notion-item{padding:10px 14px;background:#fff;border-bottom:1px solid #f4f4f5;display:flex;align-items:center;justify-content:space-between;gap:12px;font-size:14px}
+.notion-item:last-child{border-bottom:none}
 
 /* 微信密钥加密动效面板 */
 .encrypt-box{display:none;margin-top:16px;padding:18px 20px;border-radius:12px;background:linear-gradient(135deg,#0f172a,#1e293b);color:#f8fafc;border:1px solid #334155}
@@ -113,38 +149,50 @@ input[type=text]:focus,input[type=password]:focus,select:focus{outline:none;bord
 .encrypt-cipher{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:14px;letter-spacing:.4px;padding:10px 14px;border-radius:8px;background:rgba(15,23,42,.85);border:1px solid rgba(148,163,184,.25);color:#34d399;word-break:break-all}
 .encrypt-desc{margin:10px 0 0;font-size:13px;color:#cbd5e1;line-height:1.55}
 
-/* 开关与复选框 */
-.switch{position:relative;display:inline-flex;align-items:center;gap:10px;cursor:pointer;font-size:15px;font-weight:500}
-.switch input{position:absolute;opacity:0;width:0;height:0}
-.switch .track{width:44px;height:24px;border-radius:999px;background:#d4d4d8;position:relative;transition:background .18s}
-.switch .thumb{position:absolute;top:3px;left:3px;width:18px;height:18px;border-radius:50%;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.22);transition:transform .18s}
-.switch input:checked + .track{background:#07c160}
-.switch input:checked + .track .thumb{transform:translateX(20px)}
-.checks{display:flex;flex-direction:column;gap:11px;margin-top:8px}
-.check{display:flex;align-items:center;gap:9px;font-size:15px;color:#27272a;cursor:pointer}
-.check input[type=checkbox]{width:18px;height:18px;accent-color:#07c160;margin:0}
-.num-inline{width:64px;height:32px;padding:0 8px;border:1px solid #d4d4d8;border-radius:7px;font-size:14px;text-align:center}
+/* 第 2 步：MCP 与 Skill 接入面板 */
+.connect-block{border:1px solid #e4e4e7;border-radius:12px;padding:18px 20px;margin-bottom:16px;background:#fafafa}
+.connect-block h3{margin:0 0 6px;font-size:16px;font-weight:700;display:flex;align-items:center;gap:8px}
+.connect-row{display:flex;gap:10px;align-items:center;margin-top:10px}
+.connect-row input{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:13px;background:#fff}
+pre.code{margin:10px 0 0;padding:12px 14px;background:#fff;border:1px solid #e4e4e7;border-radius:9px;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12.5px;color:#27272a;overflow:auto;line-height:1.55}
+.api-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:12px}
+.api-pill{background:#fff;border:1px solid #e4e4e7;border-radius:8px;padding:9px 12px;font-size:13px}
+.api-pill code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-weight:600;color:#0b7a44}
 
-/* 主题实时预览双栏 */
-.theme-split{display:grid;grid-template-columns:300px minmax(0,1fr);gap:20px;align-items:start}
+/* 第 5 步：主题双栏严格等高对齐 */
+.theme-split{display:grid;grid-template-columns:310px minmax(0,1fr);gap:22px;align-items:stretch}
 .theme-list{display:flex;flex-direction:column;gap:10px}
 .theme-opt input{position:absolute;opacity:0;width:0;height:0}
 .theme-opt .box{display:flex;align-items:center;gap:12px;padding:12px 14px;border:1px solid #e4e4e7;border-radius:10px;font-size:15px;font-weight:500;color:#27272a;cursor:pointer;transition:all .15s}
 .theme-opt .box:hover{background:#fafafa;border-color:#cbd5e1}
 .theme-opt input:checked + .box{border-color:#07c160;background:#f0fdf5;color:#09090b;box-shadow:0 0 0 3px rgba(7,193,96,.12)}
 .swatch{width:20px;height:20px;border-radius:6px;flex:none;border:1px solid rgba(0,0,0,.08)}
-.preview-box{border:1px solid #e4e4e7;border-radius:12px;overflow:hidden;background:#fff}
-.preview-top{padding:10px 14px;background:#fafafa;border-bottom:1px solid #e4e4e7;display:flex;align-items:center;justify-content:space-between;font-size:13px;color:#52525b}
-.preview-box iframe{width:100%;height:460px;border:none;display:block;background:#fff;transition:opacity .2s}
+.preview-box{border:1px solid #e4e4e7;border-radius:12px;overflow:hidden;background:#fff;display:flex;flex-direction:column;height:100%}
+.preview-top{padding:10px 14px;background:#fafafa;border-bottom:1px solid #e4e4e7;display:flex;align-items:center;justify-content:space-between;font-size:13px;color:#52525b;flex:none}
+.preview-box iframe{width:100%;flex:1;min-height:540px;height:100%;border:none;display:block;background:#fff;transition:opacity .2s}
 
-@media (max-width:860px){
+/* Info 气泡提示按钮 */
+.info-btn{position:relative;display:inline-flex;align-items:center;justify-content:center;width:24px;height:24px;border:none;border-radius:999px;background:#f4f4f5;color:#52525b;cursor:pointer;padding:0}
+.info-btn:hover{background:#e4e4e7;color:#09090b}
+.info-pop{display:none;margin:0 0 16px;padding:13px 16px;border-radius:10px;background:#f8fafc;border:1px solid #cbd5e1;font-size:13.5px;color:#334155;line-height:1.6}
+.info-pop.show{display:block;animation:popCheck .22s ease}
+
+@media (max-width:960px){
+  .step-tabs{grid-template-columns:repeat(3,1fr)}
+}
+@media (max-width:760px){
   .step-tabs{grid-template-columns:1fr 1fr}
-  .two,.theme-split{grid-template-columns:1fr}
+  .two,.theme-split,.api-grid{grid-template-columns:1fr}
   main{padding:20px 14px 48px}
 }
 </style>
 </head>
 <body>
+
+<div class="toast" id="toast" role="status" aria-live="polite">
+  <i data-lucide="check-circle-2" style="width:17px;height:17px;color:#34d399"></i>
+  <span id="toast-text">已复制</span>
+</div>
 
 <div class="top">
   <div class="top-inner">
@@ -169,15 +217,15 @@ input[type=text]:focus,input[type=password]:focus,select:focus{outline:none;bord
   <div class="hero">
     <div>
       <h1>{% if welcome %}欢迎加入！只需几步即可启用发布台{% else %}初始化配置向导{% endif %}</h1>
-      <p class="sub">先完成必填的「微信公众号」连通性测试与加密保存；其余步骤可按需填写或直接跳过。</p>
+      <p class="sub">先验证并加密保存「微信公众号」；随后即可获取专属 MCP 与 Skill，其余步骤按需设置或跳过。</p>
     </div>
   </div>
 
-  <!-- 顶部进度条 + 5 个独立分步 -->
+  <!-- 顶部进度条 + 6 个独立分步 -->
   <section class="stepper">
     <div class="prog-head">
-      <span>第 <b id="prog-idx">1</b> / 5 步 · <b id="prog-label">微信公众号</b></span>
-      <span id="prog-pct">20%</span>
+      <span>第 <b id="prog-idx">1</b> / 6 步 · <b id="prog-label">微信公众号</b></span>
+      <span id="prog-pct">17%</span>
     </div>
     <div class="prog-track"><div class="prog-fill" id="prog-fill"></div></div>
     <div class="step-tabs" id="step-tabs">
@@ -194,14 +242,14 @@ input[type=text]:focus,input[type=password]:focus,select:focus{outline:none;bord
   </section>
 
   <div class="stage">
-    <!-- 第 1 步：微信公众号（必填，测试通过才允许保存） -->
+    <!-- 第 1 步：微信公众号（必填，已保存加密密钥再次返回不再重复加密） -->
     <section class="step-panel" id="panel-wechat" data-step="wechat">
       <div class="card" id="card-wechat">
         <div class="card-head">
-          <div class="card-icon"><i data-lucide="message-square-dot" style="width:20px;height:20px"></i></div>
+          <div class="card-icon"><i data-lucide="message-square-dot" style="width:21px;height:21px"></i></div>
           <div>
             <h2>1. 微信公众号配置</h2>
-            <p>必须通过微信服务器实时校验后才能保存并进入工作台</p>
+            <p>校验通过后自动尝试获取作者信息，并加密存储凭据</p>
           </div>
           <span class="badge {{ '' if wx_verified else 'amber' }}" id="wx-badge" style="margin-left:auto">{{ '已验证' if wx_verified else '必填 · 待验证' }}</span>
         </div>
@@ -209,9 +257,9 @@ input[type=text]:focus,input[type=password]:focus,select:focus{outline:none;bord
           <div class="info-box">
             <i data-lucide="shield-alert" style="width:20px;height:20px;flex:none;margin-top:2px"></i>
             <div>
-              <b>IP 白名单提醒：</b>请登录「微信公众平台 → 设置与开发 → 开发接口管理 → IP 白名单」，添加服务器出口 IP
+              <b>IP 白名单提醒：</b>请前往「微信公众平台 → 设置与开发 → 开发接口管理 → IP 白名单」，添加服务器出口 IP
               <code style="font-family:monospace;background:#dbeafe;padding:2px 6px;border-radius:5px">{{ server_ip }}</code>
-              <button type="button" class="btn btn-sm" style="margin-left:6px" onclick="copyText('{{ server_ip }}', this)"><i data-lucide="copy" style="width:13px;height:13px"></i>复制 IP</button>
+              <button type="button" class="btn btn-sm" style="margin-left:8px" onclick="copyWithToast('{{ server_ip }}', '服务器 IP 已复制')"><i data-lucide="copy" style="width:13px;height:13px"></i>复制 IP</button>
             </div>
           </div>
 
@@ -221,8 +269,8 @@ input[type=text]:focus,input[type=password]:focus,select:focus{outline:none;bord
               <input id="ob_wx_appid" type="text" value="{{ cfg.wechat.appid }}" placeholder="例如：wx1234567890abcdef">
             </div>
             <div class="field">
-              <label class="lbl" for="ob_wx_author">公众号名称 / 默认作者</label>
-              <input id="ob_wx_author" type="text" value="{{ cfg.wechat.author }}" placeholder="显示在文章标题下方">
+              <label class="lbl" for="ob_wx_author">公众号作者名（可选）</label>
+              <input id="ob_wx_author" type="text" value="{{ cfg.wechat.author }}" placeholder="留空将尝试从公众号自动读取，拿不到也可不填">
             </div>
           </div>
 
@@ -232,22 +280,22 @@ input[type=text]:focus,input[type=password]:focus,select:focus{outline:none;bord
               {% if wx_secret_set %}<span class="badge">已加密保存</span>{% endif %}
             </label>
             <div class="pw-wrap">
-              <input id="ob_wx_secret" type="password" autocomplete="new-password" placeholder="{% if wx_secret_set %}已加密存储，留空保持不变，输入新密钥可更新{% else %}请输入 32 位公众号 AppSecret{% endif %}">
+              <input id="ob_wx_secret" type="password" autocomplete="new-password" placeholder="{% if wx_secret_set %}已有加密密钥（留空或保持不变不会重新加密）{% else %}请输入 32 位公众号 AppSecret{% endif %}">
               <button type="button" class="pw-eye" data-toggle="ob_wx_secret" aria-label="显示或隐藏密钥">
                 <i data-lucide="eye" style="width:18px;height:18px"></i>
               </button>
             </div>
-            <p class="hint"><i data-lucide="lock" style="width:13px;height:13px;vertical-align:-2px;margin-right:4px"></i>凭据采用 AES-256-GCM 加密存储，绝不明文落盘或回显。</p>
+            <p class="hint"><i data-lucide="lock" style="width:13px;height:13px;vertical-align:-2px;margin-right:4px"></i>凭据通过 AES-256-GCM 加密保存；未更换密钥时返回本页不会重复重新加密。</p>
           </div>
 
           <div class="test-bar">
-            <button type="button" class="btn" id="ob-test-wx-btn"><i data-lucide="wifi" style="width:16px;height:16px"></i>仅测试连通性</button>
-            <span class="hint" style="margin:0">可直接用当前输入框的值测试，无需提前保存</span>
+            <button type="button" class="btn" id="ob-test-wx-btn"><i data-lucide="wifi" style="width:16px;height:16px"></i>测试连通性</button>
+            <span class="hint" style="margin:0">可直接测试当前输入框内容，无需先保存</span>
           </div>
 
           <div class="status-banner" id="ob-wx-status"></div>
 
-          <!-- 加密存储反馈动画盒 -->
+          <!-- 加密存储反馈动画盒（仅首次配置或变更密钥时触发） -->
           <div class="encrypt-box" id="ob-wx-encrypt">
             <div class="encrypt-top">
               <div class="encrypt-icon" id="ob-enc-icon"><i data-lucide="unlock" style="width:20px;height:20px"></i></div>
@@ -258,22 +306,102 @@ input[type=text]:focus,input[type=password]:focus,select:focus{outline:none;bord
           </div>
         </div>
         <div class="card-foot">
-          <span class="hint" style="margin:0">验证通过后将自动解锁后续可选步骤</span>
+          <span class="hint" style="margin:0">保存后自动生成专属 MCP 与 Skill，并进入第 2 步</span>
           <button type="button" class="btn btn-primary" id="ob-save-wx-btn">
-            <i data-lucide="shield-check" style="width:17px;height:17px"></i>验证并加密保存
+            <i data-lucide="shield-check" style="width:17px;height:17px"></i>
+            <span id="ob-save-wx-label">{{ '保存修改并进入下一步' if wx_verified else '验证并加密保存' }}</span>
           </button>
         </div>
       </div>
     </section>
 
-    <!-- 第 2 步：Notion 数据源（可选，支持链接解析） -->
+    <!-- 第 2 步：专属 MCP 地址与 Agent Skill -->
+    <section class="step-panel" id="panel-connect" data-step="connect">
+      <div class="card" id="card-connect">
+        <div class="card-head">
+          <div class="card-icon"><i data-lucide="blocks" style="width:21px;height:21px"></i></div>
+          <div>
+            <h2>2. 专属 MCP 与 Agent Skill 接入</h2>
+            <p>复制你的私有接入地址或直接把 Skill 链接发给 AI，立刻打通全套写作推送能力</p>
+          </div>
+          <div style="margin-left:auto;display:flex;gap:8px;align-items:center">
+            <button type="button" class="btn btn-primary btn-sm" id="ob-copy-bundle-btn">
+              <i data-lucide="copy-check" style="width:15px;height:15px"></i>一键复制全部（MCP + Skill）
+            </button>
+          </div>
+        </div>
+        <div class="card-body">
+          <!-- 1) 私有 MCP Server -->
+          <div class="connect-block">
+            <h3><i data-lucide="plug" style="width:18px;height:18px;color:#07c160"></i>你的私有 MCP Server 地址</h3>
+            <p class="hint" style="margin-top:2px">适配 Claude Desktop、Cursor、Antigravity、Cherry Studio 等所有支持 MCP 的 Agent；已与你的公众号严格绑定隔离。</p>
+            <div class="connect-row">
+              <input id="conn-mcp-url" type="text" value="{{ mcp_url }}" readonly>
+              <button type="button" class="btn" onclick="copyWithToast(document.getElementById('conn-mcp-url').value, '私有 MCP 地址已复制')"><i data-lucide="copy" style="width:15px;height:15px"></i>复制地址</button>
+            </div>
+            <details style="margin-top:10px">
+              <summary style="font-size:13.5px;color:#52525b;cursor:pointer;font-weight:500">查看 MCP 客户端 JSON 配置片段</summary>
+              <div style="position:relative;margin-top:8px">
+                <pre class="code" id="conn-mcp-json">{{ mcp_snippet }}</pre>
+                <button type="button" class="btn btn-sm" style="margin-top:8px" onclick="copyWithToast(document.getElementById('conn-mcp-json').textContent, 'MCP JSON 已复制')"><i data-lucide="copy" style="width:13px;height:13px"></i>复制 JSON</button>
+              </div>
+            </details>
+          </div>
+
+          <!-- 2) 专属 Skill（在线链接 + API/用法 + 下载安装指引） -->
+          <div class="connect-block" style="margin-bottom:0">
+            <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap">
+              <h3><i data-lucide="book-open-check" style="width:18px;height:18px;color:#07c160"></i>专属 Agent Skill（wechat-publish）</h3>
+              <a class="btn btn-sm" id="conn-skill-zip-link" href="{{ skill_zip_url or '#' }}" download="wechat-publish.zip">
+                <i data-lucide="download" style="width:14px;height:14px"></i>下载 Skill 压缩包（.zip）
+              </a>
+            </div>
+            <p class="hint" style="margin-top:4px">
+              该 Skill 内置了全部 <b>MCP 工具说明</b> 与 <b>REST API 文档</b>（文章创建/更新/预览/发布、图片上传、主题列表），并已写入你的私有认证凭证。
+              <b>把下方链接直接发给任意 AI 助手，AI 就能读取并自动完成安装与调用：</b>
+            </p>
+
+            <div class="connect-row">
+              <input id="conn-skill-url" type="text" value="{{ skill_url }}" readonly>
+              <button type="button" class="btn" onclick="copyWithToast(document.getElementById('conn-skill-url').value, 'Skill 请求地址已复制，可直接发给 AI')"><i data-lucide="copy" style="width:15px;height:15px"></i>复制链接</button>
+            </div>
+
+            <div style="margin-top:14px">
+              <div style="font-size:13.5px;font-weight:600;color:#27272a;margin-bottom:6px">本地终端一键安装命令（写入 <code style="font-family:monospace">~/.claude/skills/wechat-publish/</code>）</div>
+              <div class="connect-row" style="margin-top:0">
+                <input id="conn-install-cmd" type="text" value="{{ install_cmd }}" readonly>
+                <button type="button" class="btn" onclick="copyWithToast(document.getElementById('conn-install-cmd').value, '安装命令已复制')"><i data-lucide="terminal" style="width:15px;height:15px"></i>复制命令</button>
+              </div>
+              <p class="hint">若你使用 Antigravity / Codex，也可将保存路径替换为 <code>~/.gemini/config/skills/wechat-publish/</code> 后再运行。安装完成后执行 <code>python3 ~/.claude/skills/wechat-publish/scripts/publish.py &lt;文章.md&gt;</code> 即可自动传图发布。</p>
+            </div>
+
+            <div class="api-grid">
+              <div class="api-pill"><code>create_article</code> / <code>update_article</code><br><span style="color:#71717a">通过 Markdown 创建或更新文章</span></div>
+              <div class="api-pill"><code>save_image</code> / <code>POST /api/images</code><br><span style="color:#71717a">本地配图上传并自动返回公网图床 URL</span></div>
+              <div class="api-pill"><code>publish_to_draft</code> / <code>POST .../publish</code><br><span style="color:#71717a">转存微信图床并推送到公众号草稿箱</span></div>
+              <div class="api-pill"><code>GET /skill/.../SKILL.md</code><br><span style="color:#71717a">含完整参数定义、主题清单与调用示例</span></div>
+            </div>
+          </div>
+          <textarea id="conn-bundle-store" style="display:none">{{ bundle_text }}</textarea>
+        </div>
+        <div class="card-foot">
+          <button type="button" class="btn btn-ghost" onclick="goStep('wechat')"><i data-lucide="arrow-left" style="width:16px;height:16px"></i>上一步</button>
+          <div style="display:flex;gap:10px;flex-wrap:wrap">
+            <button type="button" class="btn" id="ob-skip-connect-btn"><i data-lucide="skip-forward" style="width:16px;height:16px"></i>跳过此步</button>
+            <button type="button" class="btn btn-primary" id="ob-next-connect-btn">继续配置 Notion<i data-lucide="arrow-right" style="width:16px;height:16px"></i></button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 第 3 步：Notion 数据源（支持链接解析 + 校验拉取最近文章列表） -->
     <section class="step-panel" id="panel-notion" data-step="notion">
       <div class="card" id="card-notion">
         <div class="card-head">
-          <div class="card-icon"><i data-lucide="database" style="width:20px;height:20px"></i></div>
+          <div class="card-icon"><i data-lucide="database" style="width:21px;height:21px"></i></div>
           <div>
-            <h2>2. Notion 数据源配置</h2>
-            <p>支持直接粘贴 Notion 数据库链接，自动提取 Database ID 并实时测试连通性</p>
+            <h2>3. Notion 数据源配置</h2>
+            <p>粘贴 Notion 数据库链接即可自动提取 Database ID，并实时拉取最近文章确认数据源</p>
           </div>
           <span class="badge gray" style="margin-left:auto">可选</span>
         </div>
@@ -281,7 +409,7 @@ input[type=text]:focus,input[type=password]:focus,select:focus{outline:none;bord
           <div class="field">
             <label class="lbl" for="ob_nt_token">
               Notion Integration Token
-              {% if notion_token_set %}<span class="badge">已设置</span>{% endif %}
+              {% if notion_token_set %}<span class="badge">已加密保存</span>{% endif %}
             </label>
             <div class="pw-wrap">
               <input id="ob_nt_token" type="password" autocomplete="new-password" placeholder="{% if notion_token_set %}已加密存储，留空保持不变{% else %}ntn_... 或 secret_...{% endif %}">
@@ -299,7 +427,7 @@ input[type=text]:focus,input[type=password]:focus,select:focus{outline:none;bord
                 <i data-lucide="check" style="width:14px;height:14px"></i>
                 <span id="ob-nt-parsed-val">{{ cfg.notion.db_id }}</span>
               </div>
-              <p class="hint">复制数据库网页地址直接粘贴即可，系统会自动忽略 <code>?v=</code> 视图参数。</p>
+              <p class="hint">直接复制数据库页面链接，系统会自动忽略 <code>?v=</code> 视图参数。</p>
             </div>
             <div class="field">
               <label class="lbl" for="ob_nt_wh">
@@ -312,14 +440,21 @@ input[type=text]:focus,input[type=password]:focus,select:focus{outline:none;bord
           </div>
 
           <div class="test-bar">
-            <button type="button" class="btn" id="ob-test-nt-btn"><i data-lucide="plug-zap" style="width:16px;height:16px"></i>立即测试 Notion 连接</button>
-            <span class="hint" style="margin:0">记得在 Notion 数据库右上角 ··· → Connections 中添加你的 Integration</span>
+            <button type="button" class="btn" id="ob-test-nt-btn"><i data-lucide="plug-zap" style="width:16px;height:16px"></i>测试连接并拉取最近文章</button>
+            <span class="hint" style="margin:0">记得在 Notion 数据库右上角 ··· → Connections 中授权你的 Integration</span>
           </div>
 
           <div class="status-banner" id="ob-nt-status"></div>
+          <div class="notion-preview" id="ob-nt-preview">
+            <div class="notion-preview-head">
+              <span id="ob-nt-preview-title">最近文章列表</span>
+              <span class="badge gray" id="ob-nt-preview-count">0 篇</span>
+            </div>
+            <div id="ob-nt-preview-list"></div>
+          </div>
         </div>
         <div class="card-foot">
-          <button type="button" class="btn btn-ghost" onclick="goStep('wechat')"><i data-lucide="arrow-left" style="width:16px;height:16px"></i>上一步</button>
+          <button type="button" class="btn btn-ghost" onclick="goStep('connect')"><i data-lucide="arrow-left" style="width:16px;height:16px"></i>上一步</button>
           <div style="display:flex;gap:10px;flex-wrap:wrap">
             <button type="button" class="btn" id="ob-skip-nt-btn"><i data-lucide="skip-forward" style="width:16px;height:16px"></i>跳过此步</button>
             <button type="button" class="btn btn-primary" id="ob-save-nt-btn">保存并继续<i data-lucide="arrow-right" style="width:16px;height:16px"></i></button>
@@ -328,13 +463,13 @@ input[type=text]:focus,input[type=password]:focus,select:focus{outline:none;bord
       </div>
     </section>
 
-    <!-- 第 3 步：AI 智能配图（可选） -->
+    <!-- 第 4 步：AI 智能配图（可选） -->
     <section class="step-panel" id="panel-ai" data-step="ai">
       <div class="card" id="card-ai">
         <div class="card-head">
-          <div class="card-icon"><i data-lucide="sparkles" style="width:20px;height:20px"></i></div>
+          <div class="card-icon"><i data-lucide="sparkles" style="width:21px;height:21px"></i></div>
           <div>
-            <h2>3. AI 智能配图偏好</h2>
+            <h2>4. AI 智能配图偏好</h2>
             <p>平台统一提供绘图算力，当前免费赠送体验，无需自备 API Key</p>
           </div>
           <label class="switch" style="margin-left:auto">
@@ -366,9 +501,9 @@ input[type=text]:focus,input[type=password]:focus,select:focus{outline:none;bord
           </div>
 
           <div class="checks">
-            <label class="check"><input type="checkbox" id="ob_ai_write" {% if cfg.ai_images.write_to_notion %}checked{% endif %}>生成的图片自动回写回 Notion（封面图 + 正文插图块）</label>
+            <label class="check"><input class="u-check" type="checkbox" id="ob_ai_write" {% if cfg.ai_images.write_to_notion %}checked{% endif %}>生成的图片自动回写回 Notion（封面图 + 正文插图块）</label>
             <div class="check" style="flex-wrap:wrap">
-              <input type="checkbox" id="ob_ai_skip" {% if cfg.ai_images.skip_if_has_images %}checked{% endif %}>
+              <input class="u-check" type="checkbox" id="ob_ai_skip" {% if cfg.ai_images.skip_if_has_images %}checked{% endif %}>
               <label for="ob_ai_skip" style="cursor:pointer">文章已有配图时跳过 AI 生成（正文图片 ≥</label>
               <input class="num-inline" type="number" id="ob_ai_min" min="1" max="50" value="{{ cfg.ai_images.skip_min_images or 2 }}">
               <span>张即跳过）</span>
@@ -386,14 +521,14 @@ input[type=text]:focus,input[type=password]:focus,select:focus{outline:none;bord
       </div>
     </section>
 
-    <!-- 第 4 步：排版主题（右侧示例文案实时预览） -->
+    <!-- 第 5 步：排版主题（右侧示例文案严格等高实时预览） -->
     <section class="step-panel" id="panel-theme" data-step="theme">
       <div class="card" id="card-theme">
         <div class="card-head">
-          <div class="card-icon"><i data-lucide="palette" style="width:20px;height:20px"></i></div>
+          <div class="card-icon"><i data-lucide="palette" style="width:21px;height:21px"></i></div>
           <div>
-            <h2>4. 选择公众号排版主题</h2>
-            <p>点击左侧任一主题，右侧即时展示示例文章排版效果</p>
+            <h2>5. 选择公众号排版主题</h2>
+            <p>点击左侧任一主题，右侧与主题列表等高实时展示示例文章排版效果</p>
           </div>
           <span class="badge" id="ob-theme-badge" style="margin-left:auto">{{ current_theme }}</span>
         </div>
@@ -430,14 +565,19 @@ input[type=text]:focus,input[type=password]:focus,select:focus{outline:none;bord
       </div>
     </section>
 
-    <!-- 第 5 步：Bark 通知（可选，即时测试） -->
+    <!-- 第 6 步：Bark / Bug 异常与发布推送通知（带简介、Info 图标与联系管理员提示） -->
     <section class="step-panel" id="panel-notify" data-step="notify">
       <div class="card" id="card-notify">
         <div class="card-head">
-          <div class="card-icon"><i data-lucide="bell-ring" style="width:20px;height:20px"></i></div>
+          <div class="card-icon"><i data-lucide="bell-ring" style="width:21px;height:21px"></i></div>
           <div>
-            <h2>5. Bark 推送通知</h2>
-            <p>文章发布成功、异常告警实时推送到手机（支持 iOS Bark）</p>
+            <h2>
+              6. 发布与异常 Bug 推送通知
+              <button type="button" class="info-btn" id="ob-notify-info-btn" title="什么是推送通知？如何使用？" aria-label="查看推送说明">
+                <i data-lucide="info" style="width:15px;height:15px"></i>
+              </button>
+            </h2>
+            <p>文章开始处理、推送成功或出现异常 Bug 时第一时间通过 Bark 推送告警到手机</p>
           </div>
           <label class="switch" style="margin-left:auto">
             <span>启用通知</span>
@@ -446,10 +586,24 @@ input[type=text]:focus,input[type=password]:focus,select:focus{outline:none;bord
           </label>
         </div>
         <div class="card-body">
+          <div class="info-pop" id="ob-notify-info-pop">
+            <b>什么是发布 / 异常 Bug 推送通知？</b><br>
+            系统支持接入兼容 <b>Bark</b> 协议的推送地址。开启后，每当触发「开始处理」「发布成功」或遇到如公众号 IP 未加白名单、Notion 拉取失败等 <b>异常 Bug</b> 时，都会即时向你的手机发送告警消息，方便及时排查。填写方式：在 App 内复制你的 <b>设备 Key</b>（以及自建或官方服务器地址，默认 <code>https://api.day.app</code>）。
+          </div>
+
+          {% if not notify_configured %}
+          <div class="info-box amber">
+            <i data-lucide="life-buoy" style="width:20px;height:20px;flex:none;margin-top:2px"></i>
+            <div>
+              <b>暂无推送配置？</b>如果你还没有 Bark 推送地址或设备 Key，可以跳过此步，或<b>联系管理员申请获取</b>团队专用告警推送通道。
+            </div>
+          </div>
+          {% endif %}
+
           <div class="field">
             <label class="lbl" for="ob_bark_key">
-              Bark 设备 Key
-              {% if notify_configured %}<span class="badge">已设置</span>{% endif %}
+              推送设备 Key
+              {% if notify_configured %}<span class="badge">已加密保存</span>{% endif %}
             </label>
             <div class="pw-wrap">
               <input id="ob_bark_key" type="password" autocomplete="new-password" placeholder="{% if notify_configured %}已设置，留空保持不变{% else %}在 Bark App 首页复制你的设备 Key{% endif %}">
@@ -461,7 +615,7 @@ input[type=text]:focus,input[type=password]:focus,select:focus{outline:none;bord
 
           <div class="two">
             <div class="field">
-              <label class="lbl" for="ob_bark_server">Bark 服务器地址</label>
+              <label class="lbl" for="ob_bark_server">推送服务器地址</label>
               <input id="ob_bark_server" type="text" value="{{ cfg.notify.bark.server }}">
             </div>
             <div class="field">
@@ -471,9 +625,9 @@ input[type=text]:focus,input[type=password]:focus,select:focus{outline:none;bord
           </div>
 
           <div style="display:flex;gap:18px;flex-wrap:wrap;margin:4px 0 14px">
-            <label class="check"><input type="checkbox" id="ob_ev_start" {% if cfg.notify.events.start %}checked{% endif %}>开始处理</label>
-            <label class="check"><input type="checkbox" id="ob_ev_success" {% if cfg.notify.events.success %}checked{% endif %}>发布成功</label>
-            <label class="check"><input type="checkbox" id="ob_ev_error" {% if cfg.notify.events.error %}checked{% endif %}>发布失败</label>
+            <label class="check"><input class="u-check" type="checkbox" id="ob_ev_start" {% if cfg.notify.events.start %}checked{% endif %}>开始处理</label>
+            <label class="check"><input class="u-check" type="checkbox" id="ob_ev_success" {% if cfg.notify.events.success %}checked{% endif %}>发布成功</label>
+            <label class="check"><input class="u-check" type="checkbox" id="ob_ev_error" {% if cfg.notify.events.error %}checked{% endif %}>异常 / Bug 告警</label>
           </div>
 
           <div class="test-bar">
@@ -498,19 +652,29 @@ input[type=text]:focus,input[type=password]:focus,select:focus{outline:none;bord
 <script>
 if (window.lucide) lucide.createIcons();
 
-var ORDER = ['wechat', 'notion', 'ai', 'theme', 'notify'];
-var LABELS = { wechat: '微信公众号', notion: 'Notion 数据源', ai: 'AI 智能配图', theme: '排版主题', notify: 'Bark 通知' };
+var ORDER = ['wechat', 'connect', 'notion', 'ai', 'theme', 'notify'];
+var LABELS = { wechat: '微信公众号', connect: 'MCP 与 Skill', notion: 'Notion 数据源', ai: 'AI 智能配图', theme: '排版主题', notify: 'Bark 通知' };
 var currentStep = "{{ initial_step }}";
 var wxVerified = {{ 'true' if wx_verified else 'false' }};
 var completedSteps = new Set(wxVerified ? ['wechat'] : []);
+var toastTimer = null;
 
-function copyText(txt, btn) {
-  if (!txt) return;
+function showToast(text) {
+  var el = document.getElementById('toast');
+  var tx = document.getElementById('toast-text');
+  if (!el || !tx) return;
+  tx.textContent = text || '已复制';
+  el.classList.add('show');
+  if (toastTimer) clearTimeout(toastTimer);
+  toastTimer = setTimeout(function () { el.classList.remove('show'); }, 1800);
+}
+
+function copyWithToast(txt, msg) {
+  if (!txt) { showToast('当前暂无可复制内容'); return; }
   navigator.clipboard.writeText(txt).then(function () {
-    if (!btn) return;
-    var old = btn.innerHTML;
-    btn.textContent = '已复制';
-    setTimeout(function () { btn.innerHTML = old; if (window.lucide) lucide.createIcons(); }, 1300);
+    showToast(msg || '已复制到剪贴板');
+  }).catch(function () {
+    showToast('复制失败，请手动选中复制');
   });
 }
 
@@ -520,6 +684,7 @@ function setBanner(el, state, text) {
   var iconHtml = '';
   if (state === 'loading') iconHtml = '<i data-lucide="loader-2" class="spin" style="width:18px;height:18px;flex:none"></i>';
   else if (state === 'ok') iconHtml = '<i data-lucide="check-circle-2" class="pop" style="width:18px;height:18px;flex:none"></i>';
+  else if (state === 'warn') iconHtml = '<i data-lucide="info" class="pop" style="width:18px;height:18px;flex:none"></i>';
   else iconHtml = '<i data-lucide="alert-circle" class="pop" style="width:18px;height:18px;flex:none"></i>';
   el.innerHTML = iconHtml + '<span></span>';
   el.querySelector('span').textContent = text;
@@ -544,6 +709,16 @@ function extractNotionId(raw) {
   var m = target.match(/[0-9a-fA-F]{32}|[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}/g);
   if (m && m.length) return m[m.length - 1].replace(/-/g, '').toLowerCase();
   return s;
+}
+
+function updateConnectPanel(d) {
+  if (!d) return;
+  if (d.mcp_url) document.getElementById('conn-mcp-url').value = d.mcp_url;
+  if (d.mcp_snippet) document.getElementById('conn-mcp-json').textContent = d.mcp_snippet;
+  if (d.skill_url) document.getElementById('conn-skill-url').value = d.skill_url;
+  if (d.skill_zip_url) document.getElementById('conn-skill-zip-link').href = d.skill_zip_url;
+  if (d.install_cmd) document.getElementById('conn-install-cmd').value = d.install_cmd;
+  if (d.bundle_text) document.getElementById('conn-bundle-store').value = d.bundle_text;
 }
 
 function goStep(stepId) {
@@ -625,6 +800,8 @@ if (ntDbInput) {
 
 // 第 1 步：微信公众号即时测试 & 验证加密保存
 var wxStatus = document.getElementById('ob-wx-status');
+var wxAuthorInput = document.getElementById('ob_wx_author');
+
 document.getElementById('ob-test-wx-btn').addEventListener('click', async function () {
   var btn = this;
   btn.disabled = true;
@@ -640,7 +817,12 @@ document.getElementById('ob-test-wx-btn').addEventListener('click', async functi
     });
     var d = await r.json();
     if (d.ok) {
-      setBanner(wxStatus, 'ok', d.message || '公众号连通性测试通过！');
+      if (d.detected_author && !wxAuthorInput.value.trim()) {
+        wxAuthorInput.value = d.detected_author;
+        setBanner(wxStatus, 'ok', (d.message || '校验通过') + ' · 已自动填入作者「' + d.detected_author + '」');
+      } else {
+        setBanner(wxStatus, 'ok', d.message || '公众号连通性测试通过！');
+      }
     } else {
       shakeCard('card-wechat');
       setBanner(wxStatus, 'err', d.reason || '校验失败，请核对 AppID / AppSecret 及 IP 白名单');
@@ -676,15 +858,15 @@ function runEncryptionAnimation(doneCb) {
       titleEl.textContent = '已加密安全落盘（AES-256-GCM）';
       cipherEl.textContent = 'enc:v1:•••••••••••••••••••••••••••• (已加密)';
       if (window.lucide) lucide.createIcons();
-      setTimeout(doneCb, 950);
+      setTimeout(doneCb, 900);
     }
-  }, 70);
+  }, 65);
 }
 
 document.getElementById('ob-save-wx-btn').addEventListener('click', async function () {
   var btn = this;
   btn.disabled = true;
-  setBanner(wxStatus, 'loading', '正在校验公众号连通性，请稍候...');
+  setBanner(wxStatus, 'loading', '正在确认公众号配置...');
   try {
     var r = await fetch('/onboarding/step/wechat', {
       method: 'POST',
@@ -692,7 +874,7 @@ document.getElementById('ob-save-wx-btn').addEventListener('click', async functi
       body: JSON.stringify({
         appid: document.getElementById('ob_wx_appid').value.trim(),
         appsecret: document.getElementById('ob_wx_secret').value.trim(),
-        author: document.getElementById('ob_wx_author').value.trim()
+        author: wxAuthorInput.value.trim()
       })
     });
     var d = await r.json();
@@ -704,14 +886,26 @@ document.getElementById('ob-save-wx-btn').addEventListener('click', async functi
     }
     wxVerified = true;
     completedSteps.add('wechat');
+    if (d.author && !wxAuthorInput.value.trim()) wxAuthorInput.value = d.author;
+    updateConnectPanel(d);
+
     var badge = document.getElementById('wx-badge');
     badge.className = 'badge pop';
     badge.textContent = '已验证';
+    document.getElementById('ob-save-wx-label').textContent = '保存修改并进入下一步';
     setBanner(wxStatus, 'ok', d.message || '公众号校验通过！');
-    runEncryptionAnimation(function () {
-      btn.disabled = false;
-      goStep('notion');
-    });
+
+    if (d.encrypted_now) {
+      runEncryptionAnimation(function () {
+        btn.disabled = false;
+        goStep('connect');
+      });
+    } else {
+      setTimeout(function () {
+        btn.disabled = false;
+        goStep('connect');
+      }, 280);
+    }
   } catch (e) {
     shakeCard('card-wechat');
     setBanner(wxStatus, 'err', '请求失败：' + e.message);
@@ -719,12 +913,65 @@ document.getElementById('ob-save-wx-btn').addEventListener('click', async functi
   }
 });
 
-// 第 2 步：Notion 即时测试、保存与跳过
+// 第 2 步：MCP 与 Skill 一键复制及前进/跳过
+document.getElementById('ob-copy-bundle-btn').addEventListener('click', function () {
+  copyWithToast(document.getElementById('conn-bundle-store').value, '已一键复制 MCP 地址与 Skill 全套安装用法');
+});
+document.getElementById('ob-skip-connect-btn').addEventListener('click', async function () {
+  await fetch('/onboarding/step/connect', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'skip' }) });
+  goStep('notion');
+});
+document.getElementById('ob-next-connect-btn').addEventListener('click', async function () {
+  await fetch('/onboarding/step/connect', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'next' }) });
+  completedSteps.add('connect');
+  goStep('notion');
+});
+
+// 第 3 步：Notion 即时测试（拉取最近文章 / 空提示）、保存与跳过
 var ntStatus = document.getElementById('ob-nt-status');
+var ntPreviewBox = document.getElementById('ob-nt-preview');
+var ntPreviewList = document.getElementById('ob-nt-preview-list');
+var ntPreviewTitle = document.getElementById('ob-nt-preview-title');
+var ntPreviewCount = document.getElementById('ob-nt-preview-count');
+
+function renderNotionPreview(d) {
+  if (!ntPreviewBox || !ntPreviewList) return;
+  if (!d || !d.ok) { ntPreviewBox.classList.remove('show'); return; }
+  ntPreviewBox.classList.add('show');
+  ntPreviewTitle.textContent = (d.title ? ('「' + d.title + '」') : '') + '最近文章';
+  var items = Array.isArray(d.articles) ? d.articles : [];
+  ntPreviewCount.textContent = items.length + ' 篇';
+  ntPreviewList.innerHTML = '';
+  if (!items.length) {
+    var emptyDiv = document.createElement('div');
+    emptyDiv.className = 'notion-item';
+    emptyDiv.style.color = '#92400e';
+    emptyDiv.style.background = '#fffbeb';
+    emptyDiv.textContent = '当前 Notion 数据库文章列表为空（请确认是否选对了数据库，或在 Notion 中新增一篇文章后再试）。';
+    ntPreviewList.appendChild(emptyDiv);
+    return;
+  }
+  items.forEach(function (it) {
+    var row = document.createElement('div');
+    row.className = 'notion-item';
+    var left = document.createElement('span');
+    left.style.fontWeight = '500';
+    left.textContent = it.title || '(无标题)';
+    var right = document.createElement('span');
+    right.style.fontSize = '12.5px';
+    right.style.color = '#71717a';
+    right.textContent = [it.status, it.edited_time].filter(Boolean).join(' · ');
+    row.appendChild(left);
+    row.appendChild(right);
+    ntPreviewList.appendChild(row);
+  });
+}
+
 document.getElementById('ob-test-nt-btn').addEventListener('click', async function () {
   var btn = this;
   btn.disabled = true;
-  setBanner(ntStatus, 'loading', '正在连接 Notion API 检查数据库权限...');
+  ntPreviewBox.classList.remove('show');
+  setBanner(ntStatus, 'loading', '正在连接 Notion API 并拉取最近文章列表...');
   try {
     var r = await fetch('/settings/test-notion', {
       method: 'POST',
@@ -737,7 +984,8 @@ document.getElementById('ob-test-nt-btn').addEventListener('click', async functi
     var d = await r.json();
     if (d.ok) {
       if (d.db_id) document.getElementById('ob_nt_db').value = d.db_id;
-      setBanner(ntStatus, 'ok', d.message || 'Notion 连接成功！');
+      setBanner(ntStatus, d.empty ? 'warn' : 'ok', d.message || 'Notion 连接成功！');
+      renderNotionPreview(d);
     } else {
       shakeCard('card-notion');
       setBanner(ntStatus, 'err', d.reason || '连接失败');
@@ -773,7 +1021,7 @@ document.getElementById('ob-save-nt-btn').addEventListener('click', async functi
     if (d.ok) {
       completedSteps.add('notion');
       setBanner(ntStatus, 'ok', d.message || '已保存');
-      setTimeout(function () { btn.disabled = false; goStep('ai'); }, 450);
+      setTimeout(function () { btn.disabled = false; goStep('ai'); }, 400);
     } else {
       shakeCard('card-notion');
       setBanner(ntStatus, 'err', d.reason || '保存失败');
@@ -785,7 +1033,7 @@ document.getElementById('ob-save-nt-btn').addEventListener('click', async functi
   }
 });
 
-// 第 3 步：AI 配图
+// 第 4 步：AI 配图
 var aiStatus = document.getElementById('ob-ai-status');
 document.getElementById('ob-skip-ai-btn').addEventListener('click', async function () {
   await fetch('/onboarding/step/ai', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'skip' }) });
@@ -811,14 +1059,14 @@ document.getElementById('ob-save-ai-btn').addEventListener('click', async functi
   if (d.ok) {
     completedSteps.add('ai');
     setBanner(aiStatus, 'ok', d.message || '已保存');
-    setTimeout(function () { btn.disabled = false; goStep('theme'); }, 420);
+    setTimeout(function () { btn.disabled = false; goStep('theme'); }, 380);
   } else {
     btn.disabled = false;
     setBanner(aiStatus, 'err', d.reason || '保存失败');
   }
 });
 
-// 第 4 步：排版主题实时预览
+// 第 5 步：排版主题实时预览
 var previewFrame = document.getElementById('ob-preview-frame');
 var previewLoading = document.getElementById('ob-preview-loading');
 var themeBadge = document.getElementById('ob-theme-badge');
@@ -858,19 +1106,27 @@ document.getElementById('ob-save-theme-btn').addEventListener('click', async fun
   if (d.ok) {
     completedSteps.add('theme');
     setBanner(themeStatus, 'ok', d.message || '已保存');
-    setTimeout(function () { btn.disabled = false; goStep('notify'); }, 420);
+    setTimeout(function () { btn.disabled = false; goStep('notify'); }, 380);
   } else {
     btn.disabled = false;
     setBanner(themeStatus, 'err', d.reason || '保存失败');
   }
 });
 
-// 第 5 步：Bark 通知即时测试与完成
+// 第 6 步：通知说明气泡 + 即时测试与完成
+var notifyInfoBtn = document.getElementById('ob-notify-info-btn');
+var notifyInfoPop = document.getElementById('ob-notify-info-pop');
+if (notifyInfoBtn && notifyInfoPop) {
+  notifyInfoBtn.addEventListener('click', function () {
+    notifyInfoPop.classList.toggle('show');
+  });
+}
+
 var barkStatus = document.getElementById('ob-bark-status');
 document.getElementById('ob-test-bark-btn').addEventListener('click', async function () {
   var btn = this;
   btn.disabled = true;
-  setBanner(barkStatus, 'loading', '正在发送测试推送到 Bark...');
+  setBanner(barkStatus, 'loading', '正在发送测试推送到手机...');
   try {
     var r = await fetch('/settings/test-notify', {
       method: 'POST',
@@ -886,7 +1142,7 @@ document.getElementById('ob-test-bark-btn').addEventListener('click', async func
       setBanner(barkStatus, 'ok', '测试通知已发出，请查看手机推送！');
     } else {
       shakeCard('card-notify');
-      setBanner(barkStatus, 'err', '发送失败：' + (d.reason || d.status || '请核对设备 Key 与服务器地址'));
+      setBanner(barkStatus, 'err', '发送失败：' + (d.reason || d.status || '若没有 Bark 推送地址，请联系管理员申请获取'));
     }
   } catch (e) {
     shakeCard('card-notify');
@@ -923,7 +1179,7 @@ document.getElementById('ob-save-bark-btn').addEventListener('click', async func
   if (d.ok) {
     completedSteps.add('notify');
     setBanner(barkStatus, 'ok', '全部配置已完成！正在进入工作台...');
-    setTimeout(function () { window.location.href = d.redirect || '/'; }, 650);
+    setTimeout(function () { window.location.href = d.redirect || '/'; }, 600);
   } else {
     btn.disabled = false;
     shakeCard('card-notify');

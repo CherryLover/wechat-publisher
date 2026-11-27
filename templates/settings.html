@@ -11,6 +11,8 @@
 *{box-sizing:border-box}
 body{margin:0;background:#fafafa;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif;-webkit-font-smoothing:antialiased;color:#09090b;font-size:15px;line-height:1.6}
 a{color:inherit;text-decoration:none}
+.toast{position:fixed;top:20px;left:50%;transform:translate(-50%,-16px);background:#09090b;color:#fff;padding:10px 18px;border-radius:10px;font-size:14px;font-weight:500;display:inline-flex;align-items:center;gap:8px;box-shadow:0 10px 28px rgba(0,0,0,.18);opacity:0;pointer-events:none;transition:all .24s cubic-bezier(.22,1,.36,1);z-index:999}
+.toast.show{opacity:1;transform:translate(-50%,0)}
 .top{background:#fff;border-bottom:1px solid #e4e4e7}
 .top-inner{max-width:1220px;margin:0 auto;padding:0 24px;height:60px;display:flex;align-items:center;gap:24px}
 .brand{display:flex;align-items:center;gap:10px}
@@ -41,23 +43,27 @@ h1{margin:0;font-size:25px;font-weight:700;letter-spacing:-.2px}
 .swatch{width:18px;height:18px;border-radius:5px;flex:none}
 label.lbl{display:flex;align-items:center;gap:8px;font-size:14px;font-weight:600;margin-bottom:7px}
 input[type=text],input[type=password],select{width:100%;height:42px;padding:0 12px;border:1px solid #d4d4d8;border-radius:8px;font-size:15px;color:#09090b;background:#fff;font-family:inherit}
+select{appearance:none;-webkit-appearance:none;padding-right:36px;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%2371717a' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 11px center;cursor:pointer}
 input[type=text]:focus,input[type=password]:focus,select:focus{outline:none;border-color:#07c160;box-shadow:0 0 0 3px rgba(7,193,96,.12)}
 .hint{margin:7px 0 0;font-size:13px;color:#71717a;line-height:1.55}
 .field{margin-bottom:14px}
 .two{display:grid;grid-template-columns:1fr 1fr;gap:14px}
-.switch{position:relative;display:inline-flex;align-items:center;gap:8px;cursor:pointer}
+.switch{position:relative;display:inline-flex;align-items:center;gap:9px;cursor:pointer;user-select:none}
 .switch input{position:absolute;opacity:0;width:0;height:0}
-.switch .track{width:42px;height:22px;border-radius:999px;background:#d4d4d8;position:relative;transition:background .15s}
-.switch .thumb{position:absolute;top:3px;left:3px;width:16px;height:16px;border-radius:50%;background:#fff;box-shadow:0 1px 2px rgba(0,0,0,.2);transition:transform .15s}
+.switch .track{width:44px;height:24px;border-radius:999px;background:#d4d4d8;position:relative;transition:background .15s}
+.switch .thumb{position:absolute;top:3px;left:3px;width:18px;height:18px;border-radius:50%;background:#fff;box-shadow:0 1px 2px rgba(0,0,0,.2);transition:transform .15s}
 .switch input:checked + .track{background:#07c160}
 .switch input:checked + .track .thumb{transform:translateX(20px)}
+input.u-check{appearance:none;-webkit-appearance:none;width:18px;height:18px;border:1.6px solid #cbd5e1;border-radius:5px;background:#fff;display:inline-grid;place-content:center;cursor:pointer;flex:none;margin:0;transition:all .15s}
+input.u-check::before{content:"";width:10px;height:10px;transform:scale(0);transition:transform .12s ease;background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='3.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='20 6 9 17 4 12'/%3E%3C/svg%3E") center/contain no-repeat}
+input.u-check:checked{background:#07c160;border-color:#07c160}
+input.u-check:checked::before{transform:scale(1)}
 .checks{display:flex;gap:16px;flex-wrap:wrap;align-items:center}
-.check{display:flex;align-items:center;gap:8px;font-size:14px;color:#3f3f46;cursor:pointer}
-.check input[type=checkbox]{width:17px;height:17px;accent-color:#07c160;margin:0}
+.check{display:flex;align-items:center;gap:8px;font-size:14px;color:#3f3f46;cursor:pointer;user-select:none}
 .check-inline{display:flex;align-items:center;gap:7px;flex-wrap:wrap;font-size:14px;color:#3f3f46}
 .num-inline{width:62px;height:32px;padding:0 8px;border:1px solid #d4d4d8;border-radius:6px;font-size:14px;color:#09090b;background:#fff;font-family:inherit;text-align:center}
 .num-inline:focus{outline:none;border-color:#07c160}
-.btn{display:inline-flex;align-items:center;gap:7px;height:38px;padding:0 15px;border:1px solid #d4d4d8;border-radius:8px;background:#fff;font-size:14px;font-weight:500;color:#09090b;font-family:inherit;cursor:pointer}
+.btn{display:inline-flex;align-items:center;gap:7px;height:38px;padding:0 15px;border:1px solid #d4d4d8;border-radius:8px;background:#fff;font-size:14px;font-weight:500;color:#09090b;font-family:inherit;cursor:pointer;white-space:nowrap}
 .btn:hover{background:#f4f4f5}
 .btn-primary{background:#07c160;border:none;color:#fff;font-weight:600}
 .btn-primary:hover{background:#06a852}
@@ -72,18 +78,31 @@ input[type=text]:focus,input[type=password]:focus,select:focus{outline:none;bord
 .preview-foot{padding:0 16px 14px;font-size:13px;color:#71717a;line-height:1.6}
 .notice{background:#f0fdf5;border:1px solid #d5f2e3;color:#0b7a44;font-size:14px;padding:12px 16px;border-radius:9px;margin-bottom:18px;line-height:1.55}
 .warn{background:#fef2f2;border:1px solid #fecaca;color:#b91c1c}
-.info-box{background:#eff6ff;border:1px solid #bfdbfe;color:#1e40af;font-size:13px;padding:12px 14px;border-radius:8px;margin-bottom:14px;line-height:1.6}
+.info-box{background:#eff6ff;border:1px solid #bfdbfe;color:#1e40af;font-size:13.5px;padding:12px 14px;border-radius:8px;margin-bottom:14px;line-height:1.6}
+.info-box.amber{background:#fffbeb;border-color:#fde68a;color:#92400e}
+.info-btn{display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;border:none;border-radius:999px;background:#f4f4f5;color:#52525b;cursor:pointer;padding:0}
+.info-btn:hover{background:#e4e4e7;color:#09090b}
+.info-pop{display:none;margin:0 0 14px;padding:11px 13px;border-radius:8px;background:#f8fafc;border:1px solid #cbd5e1;font-size:13px;color:#334155;line-height:1.6}
+.info-pop.show{display:block}
+.notion-preview{display:none;margin-top:12px;border:1px solid #e4e4e7;border-radius:9px;overflow:hidden;background:#fafafa}
+.notion-preview.show{display:block}
+.notion-item{padding:9px 13px;background:#fff;border-bottom:1px solid #f4f4f5;display:flex;align-items:center;justify-content:space-between;gap:10px;font-size:13.5px}
+.notion-item:last-child{border-bottom:none}
 .status-inline{font-size:14px;font-weight:500}
 .status-inline.ok{color:#0b7a44}
 .status-inline.err{color:#b91c1c}
+.status-inline.warn{color:#92400e}
 @keyframes shake{0%,100%{transform:translateX(0)}20%,60%{transform:translateX(-6px)}40%,80%{transform:translateX(6px)}}
-@keyframes spin{to{transform:rotate(360deg)}}
 .shake{animation:shake .4s ease}
-.spin{animation:spin .9s linear infinite}
 @media (max-width:1020px){.grid{grid-template-columns:1fr}.themes{grid-template-columns:repeat(2,1fr)}.two{grid-template-columns:1fr}}
 </style>
 </head>
 <body>
+
+<div class="toast" id="toast" role="status" aria-live="polite">
+  <i data-lucide="check-circle-2" style="width:17px;height:17px;color:#34d399"></i>
+  <span id="toast-text">已复制</span>
+</div>
 
 <div class="top">
   <div class="top-inner">
@@ -115,9 +134,14 @@ input[type=text]:focus,input[type=password]:focus,select:focus{outline:none;bord
   <div class="page-head">
     <div>
       <h1>设置中心</h1>
-      <p class="sub">所有敏感凭据以 AES-256-GCM 加密存储，支持不先保存直接测试连通性</p>
+      <p class="sub">所有敏感凭据以 AES-256-GCM 加密存储，未改动密钥时不会重复更改；支持不先保存直接测试连通性</p>
     </div>
-    <a class="btn" href="/onboarding"><i data-lucide="wand-2" style="width:16px;height:16px"></i>打开分步向导</a>
+    <div style="display:flex;gap:8px;flex-wrap:wrap">
+      {% if mcp_url %}
+      <a class="btn" href="/onboarding?step=connect"><i data-lucide="plug" style="width:16px;height:16px;color:#07c160"></i>MCP / Skill 接入</a>
+      {% endif %}
+      <a class="btn" href="/onboarding"><i data-lucide="wand-2" style="width:16px;height:16px"></i>打开分步向导</a>
+    </div>
   </div>
 
   {% if wx_error %}
@@ -141,7 +165,7 @@ input[type=text]:focus,input[type=password]:focus,select:focus{outline:none;bord
             <div class="info-box">
               <b>白名单指引：</b>请前往「微信公众平台 → 设置与开发 → 开发接口管理 → IP 白名单」，添加服务器出口 IP
               <code style="font-family:monospace;background:#dbeafe;padding:1px 6px;border-radius:4px">{{ server_ip }}</code>
-              <button type="button" class="btn" style="height:28px;padding:0 10px;font-size:12px;margin-left:6px" onclick="copyText('{{ server_ip }}', this)">复制 IP</button>
+              <button type="button" class="btn" style="height:28px;padding:0 10px;font-size:12px;margin-left:6px" onclick="copyText('{{ server_ip }}', '服务器 IP 已复制')">复制 IP</button>
             </div>
             <div class="two">
               <div class="field">
@@ -150,7 +174,7 @@ input[type=text]:focus,input[type=password]:focus,select:focus{outline:none;bord
               </div>
               <div class="field">
                 <label class="lbl" for="wx_author">默认作者（可选）</label>
-                <input id="wx_author" type="text" name="wx_author" value="{{ cfg.wechat.author }}" placeholder="显示在文章标题下方">
+                <input id="wx_author" type="text" name="wx_author" value="{{ cfg.wechat.author }}" placeholder="留空将尝试从公众号自动读取">
               </div>
             </div>
             <div class="field" style="margin-bottom:0">
@@ -174,7 +198,7 @@ input[type=text]:focus,input[type=password]:focus,select:focus{outline:none;bord
             <h2 style="margin:0"><i data-lucide="database" style="width:18px;height:18px;color:#07c160"></i>2. Notion 数据源配置（可选）</h2>
           </div>
           <div class="card-body">
-            <p class="hint" style="margin:0 0 14px">支持直接粘贴 Notion 数据库链接，系统会自动提取 32 位 Database ID。</p>
+            <p class="hint" style="margin:0 0 14px">支持直接粘贴 Notion 数据库链接，测试连接时会自动拉取最近文章列表（若为空也会清晰提示）。</p>
             <div class="field">
               <label class="lbl" for="notion_token">
                 Notion Integration Token
@@ -195,9 +219,10 @@ input[type=text]:focus,input[type=password]:focus,select:focus{outline:none;bord
                 <input id="notion_webhook_secret" type="password" name="notion_webhook_secret" autocomplete="new-password" placeholder="{% if notion_wh_secret_set %}已设置，留空不变{% else %}留空则首次验证自动捕获{% endif %}">
               </div>
             </div>
+            <div class="notion-preview" id="nt-preview-box"></div>
           </div>
           <div class="card-foot">
-            <button type="button" class="btn" id="test-nt-btn"><i data-lucide="plug-zap" style="width:16px;height:16px"></i>测试 Notion 连接</button>
+            <button type="button" class="btn" id="test-nt-btn"><i data-lucide="plug-zap" style="width:16px;height:16px"></i>测试连接并拉取文章</button>
             <span class="hint status-inline" id="test-nt-msg" style="margin:0">可直接测试上方当前填好的 Token 与数据库链接</span>
           </div>
         </section>
@@ -233,9 +258,9 @@ input[type=text]:focus,input[type=password]:focus,select:focus{outline:none;bord
             </div>
 
             <div class="checks" style="margin-top:4px">
-              <label class="check"><input type="checkbox" name="ai_write_notion" {% if cfg.ai_images.write_to_notion %}checked{% endif %}>生成的图回写 Notion（页面封面 + 标题后的插图块）</label>
+              <label class="check"><input class="u-check" type="checkbox" name="ai_write_notion" {% if cfg.ai_images.write_to_notion %}checked{% endif %}>生成的图回写 Notion（页面封面 + 标题后的插图块）</label>
               <div class="check-inline">
-                <label class="check"><input type="checkbox" name="ai_skip_if_has_images" {% if cfg.ai_images.skip_if_has_images %}checked{% endif %}>文章已有配图时跳过 AI 生成</label>
+                <label class="check"><input class="u-check" type="checkbox" name="ai_skip_if_has_images" {% if cfg.ai_images.skip_if_has_images %}checked{% endif %}>文章已有配图时跳过 AI 生成</label>
                 <span style="color:#71717a;font-size:13px">（正文图片 ≥</span>
                 <input class="num-inline" type="number" name="ai_skip_min_images" min="1" max="50" value="{{ cfg.ai_images.skip_min_images or 2 }}" aria-label="跳过 AI 生图的最少图片数量">
                 <span style="color:#71717a;font-size:13px">张即跳过）</span>
@@ -264,10 +289,16 @@ input[type=text]:focus,input[type=password]:focus,select:focus{outline:none;bord
           </div>
         </section>
 
-        <!-- 5. Bark 通知 -->
+        <!-- 5. 发布与异常 Bug 推送通知 -->
         <section class="card" id="card-bark">
           <div class="card-head" style="display:flex;align-items:center;gap:8px">
-            <h2 style="margin:0"><i data-lucide="bell-ring" style="width:18px;height:18px;color:#07c160"></i>5. Bark 推送通知</h2>
+            <h2 style="margin:0">
+              <i data-lucide="bell-ring" style="width:18px;height:18px;color:#07c160"></i>
+              5. 发布与异常 Bug 推送通知
+              <button type="button" class="info-btn" id="notify-info-btn" title="什么是推送通知？如何使用？" aria-label="查看推送说明">
+                <i data-lucide="info" style="width:14px;height:14px"></i>
+              </button>
+            </h2>
             <label class="switch" style="margin-left:auto">
               <span style="font-size:14px;color:#52525b">启用</span>
               <input type="checkbox" name="notify_enabled" {% if cfg.notify.enabled %}checked{% endif %}>
@@ -275,6 +306,14 @@ input[type=text]:focus,input[type=password]:focus,select:focus{outline:none;bord
             </label>
           </div>
           <div class="card-body">
+            <div class="info-pop" id="notify-info-pop">
+              <b>说明：</b>支持通过 Bark 协议把「发布成功」「开始处理」以及运行过程中发生的<b>异常 Bug 告警</b>推送到手机。在 Bark App 复制设备 Key 与服务器地址即可；如果当前没有推送地址，可联系管理员申请获取。
+            </div>
+            {% if not notify_configured %}
+            <div class="info-box amber">
+              还没有配置 Bark 推送地址或设备 Key？如果没有相关信息，请<b>联系管理员申请获取</b>。
+            </div>
+            {% endif %}
             <div class="field">
               <label class="lbl" for="bark_key">
                 设备 Key
@@ -285,7 +324,7 @@ input[type=text]:focus,input[type=password]:focus,select:focus{outline:none;bord
             </div>
             <div class="two">
               <div class="field">
-                <label class="lbl" for="bark_server">服务器</label>
+                <label class="lbl" for="bark_server">服务器地址</label>
                 <input id="bark_server" type="text" name="bark_server" value="{{ cfg.notify.bark.server }}">
               </div>
               <div class="field">
@@ -294,9 +333,9 @@ input[type=text]:focus,input[type=password]:focus,select:focus{outline:none;bord
               </div>
             </div>
             <div class="checks" style="margin-top:4px">
-              <label class="check"><input type="checkbox" name="ev_start" {% if cfg.notify.events.start %}checked{% endif %}>开始处理</label>
-              <label class="check"><input type="checkbox" name="ev_success" {% if cfg.notify.events.success %}checked{% endif %}>发布成功</label>
-              <label class="check"><input type="checkbox" name="ev_error" {% if cfg.notify.events.error %}checked{% endif %}>发布失败</label>
+              <label class="check"><input class="u-check" type="checkbox" name="ev_start" {% if cfg.notify.events.start %}checked{% endif %}>开始处理</label>
+              <label class="check"><input class="u-check" type="checkbox" name="ev_success" {% if cfg.notify.events.success %}checked{% endif %}>发布成功</label>
+              <label class="check"><input class="u-check" type="checkbox" name="ev_error" {% if cfg.notify.events.error %}checked{% endif %}>异常 / Bug 告警</label>
             </div>
           </div>
           <div class="card-foot">
@@ -307,7 +346,7 @@ input[type=text]:focus,input[type=password]:focus,select:focus{outline:none;bord
 
         <div class="save-row">
           <button type="submit" class="btn btn-primary" style="height:44px;padding:0 24px"><i data-lucide="save" style="width:17px;height:17px"></i>保存全部配置</button>
-          <span class="note">保存后立即生效；专属接入链接请在「流程」或「数据源」页面复制</span>
+          <span class="note">保存后立即生效</span>
         </div>
 
         <details style="margin-top:16px;color:#71717a;font-size:13px">
@@ -318,7 +357,7 @@ input[type=text]:focus,input[type=password]:focus,select:focus{outline:none;bord
         </details>
       </div>
 
-      <aside class="card" style="margin:0">
+      <aside class="card" style="margin:0;position:sticky;top:20px">
         <div class="preview-head">
           <i data-lucide="smartphone" style="width:16px;height:16px;color:#07c160"></i>
           <span style="font-size:15px;font-weight:600">排版预览</span>
@@ -339,13 +378,20 @@ input[type=text]:focus,input[type=password]:focus,select:focus{outline:none;bord
 
 <script>
 if (window.lucide) lucide.createIcons();
-function copyText(txt, btn) {
+var _toastT = null;
+function showToast(text) {
+  var el = document.getElementById('toast');
+  var tx = document.getElementById('toast-text');
+  if (!el || !tx) return;
+  tx.textContent = text || '已复制';
+  el.classList.add('show');
+  if (_toastT) clearTimeout(_toastT);
+  _toastT = setTimeout(function () { el.classList.remove('show'); }, 1800);
+}
+function copyText(txt, msg) {
   if (!txt) return;
   navigator.clipboard.writeText(txt).then(function () {
-    if (!btn) return;
-    var old = btn.textContent;
-    btn.textContent = '已复制';
-    setTimeout(function () { btn.textContent = old; }, 1400);
+    showToast(msg || '已复制到剪贴板');
   });
 }
 
@@ -387,6 +433,12 @@ function copyText(txt, btn) {
     el.classList.add('shake');
   }
 
+  var infoBtn = document.getElementById('notify-info-btn');
+  var infoPop = document.getElementById('notify-info-pop');
+  if (infoBtn && infoPop) {
+    infoBtn.addEventListener('click', function () { infoPop.classList.toggle('show'); });
+  }
+
   var wxBtn = document.getElementById('test-wx-btn');
   var wxMsg = document.getElementById('test-wx-msg');
   if (wxBtn) {
@@ -405,7 +457,13 @@ function copyText(txt, btn) {
         });
         var d = await r.json();
         wxMsg.className = 'hint status-inline ' + (d.ok ? 'ok' : 'err');
-        wxMsg.textContent = d.ok ? d.message : (d.reason || '校验失败');
+        var authorIn = document.getElementById('wx_author');
+        if (d.ok && d.detected_author && authorIn && !authorIn.value.trim()) {
+          authorIn.value = d.detected_author;
+          wxMsg.textContent = d.message + ' · 已填入作者「' + d.detected_author + '」';
+        } else {
+          wxMsg.textContent = d.ok ? d.message : (d.reason || '校验失败');
+        }
         if (!d.ok) shakeEl('card-wx');
       } catch (e) {
         wxMsg.className = 'hint status-inline err';
@@ -419,11 +477,13 @@ function copyText(txt, btn) {
 
   var ntBtn = document.getElementById('test-nt-btn');
   var ntMsg = document.getElementById('test-nt-msg');
+  var ntBox = document.getElementById('nt-preview-box');
   if (ntBtn) {
     ntBtn.addEventListener('click', async function () {
       ntBtn.disabled = true;
       ntMsg.className = 'hint status-inline';
-      ntMsg.textContent = '正在连接 Notion...';
+      ntMsg.textContent = '正在连接 Notion 并拉取最近文章...';
+      if (ntBox) { ntBox.classList.remove('show'); ntBox.innerHTML = ''; }
       try {
         var r = await fetch('/settings/test-notion', {
           method: 'POST',
@@ -435,8 +495,34 @@ function copyText(txt, btn) {
         });
         var d = await r.json();
         if (d.ok && d.db_id) document.getElementById('notion_db_id').value = d.db_id;
-        ntMsg.className = 'hint status-inline ' + (d.ok ? 'ok' : 'err');
+        ntMsg.className = 'hint status-inline ' + (d.ok ? (d.empty ? 'warn' : 'ok') : 'err');
         ntMsg.textContent = d.ok ? d.message : (d.reason || '连接失败');
+        if (d.ok && ntBox) {
+          ntBox.classList.add('show');
+          var items = Array.isArray(d.articles) ? d.articles : [];
+          if (!items.length) {
+            var empty = document.createElement('div');
+            empty.className = 'notion-item';
+            empty.style.color = '#92400e';
+            empty.style.background = '#fffbeb';
+            empty.textContent = '当前 Notion 数据库文章列表为空';
+            ntBox.appendChild(empty);
+          } else {
+            items.forEach(function (it) {
+              var row = document.createElement('div');
+              row.className = 'notion-item';
+              var a = document.createElement('span');
+              a.textContent = it.title || '(无标题)';
+              var b = document.createElement('span');
+              b.style.fontSize = '12px';
+              b.style.color = '#71717a';
+              b.textContent = [it.status, it.edited_time].filter(Boolean).join(' · ');
+              row.appendChild(a);
+              row.appendChild(b);
+              ntBox.appendChild(row);
+            });
+          }
+        }
         if (!d.ok) shakeEl('card-nt');
       } catch (e) {
         ntMsg.className = 'hint status-inline err';

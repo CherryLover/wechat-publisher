@@ -118,3 +118,44 @@ class WechatAPI:
             raise Exception(f"创建草稿失败: {data}")
 
         return data["media_id"]
+
+    async def try_fetch_account_author(self) -> str:
+        """尽量尝试从公众号草稿箱或账号基础信息获取作者名称；失败或无权限时静默返回空"""
+        try:
+            token = await self.get_access_token()
+        except Exception:
+            return ""
+
+        try:
+            async with httpx.AsyncClient(timeout=6) as client:
+                r_draft = await client.post(
+                    f"{self.BASE_URL}/draft/batchget",
+                    params={"access_token": token},
+                    json={"offset": 0, "count": 5, "no_content": 1},
+                )
+                if r_draft.status_code == 200:
+                    data = r_draft.json()
+                    for item in data.get("item") or []:
+                        news_list = ((item.get("content") or {}).get("news_item") or [])
+                        for art in news_list:
+                            author = (art.get("author") or "").strip()
+                            if author:
+                                return author[:32]
+        except Exception:
+            pass
+
+        try:
+            async with httpx.AsyncClient(timeout=6) as client:
+                r_info = await client.get(
+                    f"{self.BASE_URL}/account/getaccountbasicinfo",
+                    params={"access_token": token},
+                )
+                if r_info.status_code == 200:
+                    info = r_info.json()
+                    nickname = (info.get("nickname") or "").strip()
+                    if nickname:
+                        return nickname[:32]
+        except Exception:
+            pass
+
+        return ""

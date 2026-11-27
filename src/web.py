@@ -14,7 +14,7 @@ from typing import Optional
 from urllib.parse import quote
 
 from fastapi import APIRouter, Request
-from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
+from fastapi.responses import HTMLResponse, JSONResponse, PlainTextResponse, RedirectResponse, Response
 from fastapi.templating import Jinja2Templates
 
 from . import (
@@ -27,6 +27,7 @@ from . import (
     notion_webhook,
     oidc,
     password_auth,
+    skill_export,
     tenant,
     usage,
 )
@@ -168,17 +169,19 @@ _SETTINGS_PW_ERRORS = {
 
 _ONBOARDING_STEPS = [
     {"id": "wechat", "index": 1, "title": "微信公众号", "required": True, "desc": "验证 AppID 与 AppSecret 连通性"},
-    {"id": "notion", "index": 2, "title": "Notion 数据源", "required": False, "desc": "绑定文档数据库与同步触发"},
-    {"id": "ai", "index": 3, "title": "AI 智能配图", "required": False, "desc": "按需开启自动封面与正文插图"},
-    {"id": "theme", "index": 4, "title": "排版主题", "required": False, "desc": "实时预览公众号文章排版效果"},
-    {"id": "notify", "index": 5, "title": "Bark 通知", "required": False, "desc": "发布进度与异常即时推送"},
+    {"id": "connect", "index": 2, "title": "MCP 与 Skill", "required": False, "desc": "获取私有 MCP 地址与 Agent Skill"},
+    {"id": "notion", "index": 3, "title": "Notion 数据源", "required": False, "desc": "绑定文档数据库与同步触发"},
+    {"id": "ai", "index": 4, "title": "AI 智能配图", "required": False, "desc": "按需开启自动封面与正文插图"},
+    {"id": "theme", "index": 5, "title": "排版主题", "required": False, "desc": "实时预览公众号文章排版效果"},
+    {"id": "notify", "index": 6, "title": "Bark 通知", "required": False, "desc": "发布进度与异常即时推送"},
 ]
 _STEP_ALIASES = {
     "1": "wechat", "wechat": "wechat",
-    "2": "notion", "notion": "notion",
-    "3": "ai", "ai": "ai",
-    "4": "theme", "theme": "theme",
-    "5": "notify", "notify": "notify",
+    "2": "connect", "connect": "connect", "mcp": "connect", "skill": "connect",
+    "3": "notion", "notion": "notion",
+    "4": "ai", "ai": "ai",
+    "5": "theme", "theme": "theme",
+    "6": "notify", "notify": "notify",
 }
 
 _DEMO_ARTICLE_MD = """# 把每周灵感冒泡成一篇好文章
@@ -209,16 +212,24 @@ def _post_login_target(user_id: str, welcome: bool = False) -> str:
     return "/"
 
 
-async def _verify_wechat_credentials(appid: str, appsecret: str) -> tuple[bool, str]:
-    """实时调用微信 API 校验 AppID 与 AppSecret 是否可用"""
+async def _verify_wechat_credentials(
+    appid: str,
+    appsecret: str,
+    *,
+    fetch_author: bool = False,
+) -> tuple[bool, str, str]:
+    """实时调用微信 API 校验 AppID 与 AppSecret 是否可用，可选顺带尝试读取作者名称"""
     aid = (appid or "").strip()
     sec = (appsecret or "").strip()
     if not (aid and sec):
-        return False, "请先填写 AppID 与 AppSecret"
+        return False, "请先填写 AppID 与 AppSecret", ""
     try:
         wx = WechatAPI(aid, sec)
         await wx.get_access_token()
-        return True, "公众号凭证校验通过，可以正常推送草稿箱"
+        detected_author = ""
+        if fetch_author:
+            detected_author = await wx.try_fetch_account_author()
+        return True, "公众号凭证校验通过，可以正常推送草稿箱", detected_author
     except Exception as e:
         msg = str(e)
         if "40164" in msg:
@@ -229,7 +240,28 @@ async def _verify_wechat_credentials(appid: str, appsecret: str) -> tuple[bool, 
             tip = "AppID 无效，请核对公众号开发者 ID"
         else:
             tip = msg[:160]
-        return False, tip
+        return False, tip, ""
+
+
+def _build_connect_context(request: Request, u_row: Optional[dict]) -> dict:
+    """组装租户私有 MCP 地址、Skill 链接、安装命令与一键复制总包"""
+    base = _base_url(request)
+    row = u_row or {}
+    mcp_tok = (row.get("mcp_token") or "").strip()
+    author = ((row.get("config") or {}).get("wechat") or {}).get("author") or ""
+    urls = skill_export.build_skill_urls(base, mcp_tok)
+    mcp_url = skill_export.build_mcp_url(base, mcp_tok)
+    mcp_snippet = skill_export.build_mcp_snippet(base, mcp_tok)
+    bundle_text = skill_export.render_agent_bundle_text(base, mcp_tok, author)
+    return {
+        "mcp_url": mcp_url,
+        "mcp_snippet": mcp_snippet,
+        "skill_url": urls["skill_url"],
+        "skill_zip_url": urls["zip_url"],
+        "skill_script_url": urls["script_url"],
+        "install_cmd": urls["install_cmd"],
+        "bundle_text": bundle_text,
+    }
 
 
 async def _read_payload(request: Request) -> tuple[dict, bool]:
@@ -262,7 +294,7 @@ async def login_page(request: Request, pw_err: Optional[str] = None, username: O
             authorize_url = await oidc.build_authorize_url()
         except Exception as e:
             logger.exception("生成授权地址失败")
-            oidc_error = "Pocket ID 暂时不可用，请使用账号密码登录"
+            oidc_error = "Passkey 登录暂时不可用，请使用账号密码登录"
 
     gcfg = config.load_config()
     return templates.TemplateResponse(
@@ -447,6 +479,7 @@ async def home(request: Request):
         })
 
     wx = tcfg.get("wechat") or {}
+    conn_ctx = _build_connect_context(request, u_row)
     return templates.TemplateResponse("home.html", {
         "request": request,
         "user": user,
@@ -456,6 +489,8 @@ async def home(request: Request):
         "latest": rows[0]["published_at"] if rows else "—",
         "wechat_ready": bool(wx.get("appid") and wx.get("appsecret") and wx.get("verified")),
         "seed_ready": bool((u_row or {}).get("mcp_token")),
+        "mcp_url": conn_ctx["mcp_url"],
+        "skill_url": conn_ctx["skill_url"],
     })
 
 
@@ -579,6 +614,7 @@ async def onboarding_page(
         and platform_ai.get("image_model")
     )
 
+    conn_ctx = _build_connect_context(request, u_row)
     return templates.TemplateResponse("onboarding.html", {
         "request": request,
         "user": user,
@@ -596,6 +632,7 @@ async def onboarding_page(
         "current_theme": cfg.get("theme") or "default",
         "server_ip": os.getenv("SERVER_PUBLIC_IP", "161.153.84.30"),
         "platform_ai_ready": platform_ai_ready,
+        **conn_ctx,
     })
 
 
@@ -610,35 +647,94 @@ async def onboarding_step_wechat(request: Request):
     old = tenant.get_tenant_config(uid)
     wx_old = old.get("wechat") or {}
 
+    old_appid = (wx_old.get("appid") or "").strip()
+    old_secret = (wx_old.get("appsecret") or "")
+    old_author = (wx_old.get("author") or "").strip()
+
     appid = str(data.get("appid") or data.get("wx_appid") or "").strip()
     raw_secret = str(data.get("appsecret") or data.get("wx_appsecret") or "").strip()
-    appsecret = raw_secret or (wx_old.get("appsecret") or "")
+    appsecret = raw_secret or old_secret
     author = str(data.get("author") or data.get("wx_author") or "").strip()
 
-    ok, msg = await _verify_wechat_credentials(appid, appsecret)
+    appid_changed = (appid != old_appid)
+    secret_changed = bool(raw_secret) and (raw_secret != old_secret)
+    already_verified = bool(wx_old.get("verified")) and not appid_changed and not secret_changed
+
+    if already_verified:
+        final_author = author
+        if not final_author:
+            try:
+                final_author = await WechatAPI(appid, appsecret).try_fetch_account_author()
+            except Exception:
+                final_author = ""
+        if final_author != old_author:
+            cfg = json.loads(json.dumps(old))
+            cfg["wechat"]["author"] = final_author
+            tenant.save_tenant_config(uid, cfg)
+        else:
+            tenant.ensure_seed_if_ready(uid)
+        u_now = tenant.get_user_by_id(uid)
+        conn_ctx = _build_connect_context(request, u_now)
+        if not is_json:
+            return RedirectResponse("/onboarding?step=connect", status_code=303)
+        return JSONResponse({
+            "ok": True,
+            "next_step": "connect",
+            "encrypted_now": False,
+            "author": final_author,
+            "message": "公众号配置已就绪，原有加密密钥保持不变。",
+            **conn_ctx,
+        })
+
+    ok, msg, detected_author = await _verify_wechat_credentials(
+        appid,
+        appsecret,
+        fetch_author=not bool(author),
+    )
     if not ok:
         if is_json:
             return JSONResponse({"ok": False, "reason": msg}, status_code=400)
-        return RedirectResponse(f"/onboarding?step=wechat", status_code=303)
+        return RedirectResponse("/onboarding?step=wechat", status_code=303)
 
+    final_author = author or detected_author
     cfg = json.loads(json.dumps(old))
     cfg["wechat"] = {
         "appid": appid,
         "appsecret": appsecret,
-        "author": author,
+        "author": final_author,
         "verified": True,
     }
     tenant.save_tenant_config(uid, cfg)
     logger.info("引导配置完成微信公众号验证与加密存储: user=%s", uid)
 
+    u_now = tenant.get_user_by_id(uid)
+    conn_ctx = _build_connect_context(request, u_now)
     if not is_json:
-        return RedirectResponse("/onboarding?step=notion", status_code=303)
+        return RedirectResponse("/onboarding?step=connect", status_code=303)
     return JSONResponse({
         "ok": True,
-        "next_step": "notion",
+        "next_step": "connect",
+        "encrypted_now": True,
+        "author": final_author,
         "encrypted_preview": "enc:v1:••••••••••••",
         "message": "公众号校验通过！AppSecret 已通过 AES-256-GCM 算法加密存入数据库。",
+        **conn_ctx,
     })
+
+
+@router.post("/onboarding/step/connect")
+async def onboarding_step_connect(request: Request):
+    user = current_user(request)
+    if not user:
+        return JSONResponse({"ok": False, "reason": "unauthorized"}, status_code=401)
+    uid = user["id"]
+    if tenant.needs_onboarding(uid):
+        return JSONResponse({"ok": False, "reason": "请先完成第 1 步微信公众号验证"}, status_code=400)
+    data, is_json = await _read_payload(request)
+    skipped = str(data.get("action") or "").strip().lower() == "skip"
+    if not is_json:
+        return RedirectResponse("/onboarding?step=notion", status_code=303)
+    return JSONResponse({"ok": True, "skipped": skipped, "next_step": "notion"})
 
 
 @router.post("/onboarding/step/notion")
@@ -907,17 +1003,25 @@ async def save_settings(request: Request):
     if new_appid or raw_wx_secret:
         changed = (new_appid != (wx_old.get("appid") or "").strip()) or bool(raw_wx_secret)
         if changed or not wx_verified:
-            ok, msg = await _verify_wechat_credentials(new_appid, new_appsecret)
+            ok, msg, detected_author = await _verify_wechat_credentials(
+                new_appid,
+                new_appsecret,
+                fetch_author=False,
+            )
             if not ok:
                 return RedirectResponse(f"/settings?wx_err={quote(msg)}", status_code=303)
+        else:
+            detected_author = ""
         wx_verified = True
     elif "wx_appid" in form:
         new_appsecret = ""
         wx_verified = False
+        detected_author = ""
     else:
         new_appid = (wx_old.get("appid") or "").strip()
         new_appsecret = (wx_old.get("appsecret") or "")
         wx_verified = bool(wx_old.get("verified"))
+        detected_author = ""
 
     raw_min = (form.get("ai_skip_min_images") or "").strip()
     min_val = raw_min if raw_min else ai_old.get("skip_min_images")
@@ -934,7 +1038,7 @@ async def save_settings(request: Request):
         "wechat": {
             "appid": new_appid,
             "appsecret": new_appsecret,
-            "author": (form.get("wx_author") or "").strip(),
+            "author": (form.get("wx_author") or "").strip() or detected_author,
             "verified": wx_verified,
         },
         "notion": {
@@ -1013,9 +1117,9 @@ async def test_wechat(request: Request):
     appid = str(data.get("appid") or data.get("wx_appid") or "").strip() or (wx_old.get("appid") or "").strip()
     appsecret = str(data.get("appsecret") or data.get("wx_appsecret") or "").strip() or (wx_old.get("appsecret") or "").strip()
 
-    ok, msg = await _verify_wechat_credentials(appid, appsecret)
+    ok, msg, detected_author = await _verify_wechat_credentials(appid, appsecret, fetch_author=True)
     if ok:
-        return JSONResponse({"ok": True, "message": msg})
+        return JSONResponse({"ok": True, "message": msg, "detected_author": detected_author})
     return JSONResponse({"ok": False, "reason": msg})
 
 
@@ -1212,6 +1316,7 @@ async def flow_page(request: Request):
         1,
     ])
 
+    conn_ctx = _build_connect_context(request, u_row)
     return templates.TemplateResponse("flow.html", {
         "request": request,
         "user": user,
@@ -1219,7 +1324,9 @@ async def flow_page(request: Request):
         "db": snap.get("database") or {},
         "wh": wh,
         "webhook_url": _user_webhook_url(request, u_row),
-        "mcp_url": _user_mcp_url(request, u_row),
+        "mcp_url": conn_ctx["mcp_url"],
+        "skill_url": conn_ctx["skill_url"],
+        "skill_zip_url": conn_ctx["skill_zip_url"],
         "theme_name": _theme_name(cfg.get("theme") or "default"),
         "ai_cfg": ai_cfg,
         "ai_enabled": ai_enabled,
@@ -1326,3 +1433,52 @@ async def admin_save_platform(request: Request):
     config.save_config(new_cfg)
     logger.info("平台全局配置已更新: allow_registration=%s", new_cfg["allow_registration"])
     return RedirectResponse("/admin?saved=1", status_code=303)
+
+
+# ---------- 租户专属 Skill 下载与 AI 在线读取端点 ----------
+
+def _resolve_skill_tenant(mcp_token: str) -> tuple[Optional[dict], Optional[Response]]:
+    tok = (mcp_token or "").strip()
+    u = tenant.get_user_by_mcp_token(tok) if tok else None
+    if not u:
+        return None, JSONResponse({"detail": "无效的 Skill 接入令牌"}, status_code=401)
+    if u.get("status") != "active":
+        return None, JSONResponse({"detail": "账号已被停用"}, status_code=403)
+    return u, None
+
+
+@router.get("/skill/{mcp_token}")
+@router.get("/skill/{mcp_token}/SKILL.md")
+async def download_skill_md(mcp_token: str, request: Request):
+    u, err = _resolve_skill_tenant(mcp_token)
+    if err:
+        return err
+    assert u is not None
+    author = ((u.get("config") or {}).get("wechat") or {}).get("author") or ""
+    content = skill_export.render_skill_md(_base_url(request), u["mcp_token"], author)
+    return PlainTextResponse(content, media_type="text/markdown; charset=utf-8")
+
+
+@router.get("/skill/{mcp_token}/scripts/publish.py")
+async def download_skill_script(mcp_token: str, request: Request):
+    u, err = _resolve_skill_tenant(mcp_token)
+    if err:
+        return err
+    assert u is not None
+    content = skill_export.render_publish_script(_base_url(request), u["mcp_token"])
+    return PlainTextResponse(content, media_type="text/x-python; charset=utf-8")
+
+
+@router.get("/skill/{mcp_token}/wechat-publish.zip")
+async def download_skill_zip(mcp_token: str, request: Request):
+    u, err = _resolve_skill_tenant(mcp_token)
+    if err:
+        return err
+    assert u is not None
+    author = ((u.get("config") or {}).get("wechat") or {}).get("author") or ""
+    payload = skill_export.build_skill_zip(_base_url(request), u["mcp_token"], author)
+    return Response(
+        content=payload,
+        media_type="application/zip",
+        headers={"Content-Disposition": 'attachment; filename="wechat-publish.zip"'},
+    )

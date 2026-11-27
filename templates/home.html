@@ -98,7 +98,13 @@ h1{margin:0;font-size:25px;font-weight:700;letter-spacing:-.2px}
       <h1>文章</h1>
       <p class="sub">经过这个系统推送到公众号的全部记录，共 {{ total }} 篇</p>
     </div>
-    <div style="display:flex;gap:8px">
+    <div style="display:flex;gap:8px;flex-wrap:wrap">
+      {% if seed_ready %}
+      <a class="btn" href="/onboarding?step=connect">
+        <i data-lucide="plug" style="width:15px;height:15px;color:#07c160"></i>
+        MCP / Skill 接入
+      </a>
+      {% endif %}
       <button class="btn" onclick="location.reload()">
         <i data-lucide="refresh-cw" style="width:15px;height:15px"></i>
         刷新
@@ -116,7 +122,7 @@ h1{margin:0;font-size:25px;font-weight:700;letter-spacing:-.2px}
     <div class="stat"><div class="k">已推送</div><div class="v">{{ total }}</div><div class="s">篇</div></div>
     <div class="stat"><div class="k">最近一次</div><div class="v">{{ latest[:10] if latest and latest != '—' else '—' }}</div><div class="s">推送时间</div></div>
     <div class="stat"><div class="k">当前主题</div><div class="v">{{ theme_name }}</div><div class="s">可在设置里改</div></div>
-    <div class="stat"><div class="k">登录身份</div><div class="v" style="font-size:15px;line-height:1.4">{{ user.username or user.name }}</div><div class="s">{{ 'Pocket ID' if user.auth_method == 'oidc' else '账号密码' }}{% if user.role == 'admin' %} · 管理员{% endif %}</div></div>
+    <div class="stat"><div class="k">登录身份</div><div class="v" style="font-size:15px;line-height:1.4">{{ user.username or user.name }}</div><div class="s">{{ 'Passkey' if user.auth_method == 'oidc' else '账号密码' }}{% if user.role == 'admin' %} · 管理员{% endif %}</div></div>
   </div>
 
   <div class="table">

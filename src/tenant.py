@@ -119,18 +119,52 @@ def _deep_merge(base: dict, override: dict) -> dict:
 
 
 def _encrypt_tenant_cfg(cfg: dict) -> dict:
-    out = json.loads(json.dumps(cfg))
+    return _encrypt_tenant_cfg_preserving(cfg, {}, {})
+
+
+def _pick_secret_cipher(new_plain: Any, old_plain: Any, old_raw: Any) -> str:
+    val = str(new_plain or "").strip()
+    if not val:
+        return ""
+    if (
+        val == str(old_plain or "").strip()
+        and isinstance(old_raw, str)
+        and old_raw.startswith(crypto.PREFIX)
+    ):
+        return old_raw
+    return crypto.encrypt_secret(val)
+
+
+def _encrypt_tenant_cfg_preserving(new_cfg: dict, old_plain: dict, old_raw: dict) -> dict:
+    """对敏感字段加密；若明文值未变化且原库已存密文，则原样保留密文避免重复变化"""
+    out = json.loads(json.dumps(new_cfg))
     wx = out.get("wechat") or {}
     if wx.get("appsecret"):
-        wx["appsecret"] = crypto.encrypt_secret(str(wx["appsecret"]))
+        wx["appsecret"] = _pick_secret_cipher(
+            wx.get("appsecret"),
+            (old_plain.get("wechat") or {}).get("appsecret"),
+            (old_raw.get("wechat") or {}).get("appsecret"),
+        )
     nt = out.get("notion") or {}
     if nt.get("token"):
-        nt["token"] = crypto.encrypt_secret(str(nt["token"]))
+        nt["token"] = _pick_secret_cipher(
+            nt.get("token"),
+            (old_plain.get("notion") or {}).get("token"),
+            (old_raw.get("notion") or {}).get("token"),
+        )
     if nt.get("webhook_secret"):
-        nt["webhook_secret"] = crypto.encrypt_secret(str(nt["webhook_secret"]))
+        nt["webhook_secret"] = _pick_secret_cipher(
+            nt.get("webhook_secret"),
+            (old_plain.get("notion") or {}).get("webhook_secret"),
+            (old_raw.get("notion") or {}).get("webhook_secret"),
+        )
     bark = (out.get("notify") or {}).get("bark") or {}
     if bark.get("key"):
-        bark["key"] = crypto.encrypt_secret(str(bark["key"]))
+        bark["key"] = _pick_secret_cipher(
+            bark.get("key"),
+            ((old_plain.get("notify") or {}).get("bark") or {}).get("key"),
+            ((old_raw.get("notify") or {}).get("bark") or {}).get("key"),
+        )
     return out
 
 
@@ -545,14 +579,20 @@ def needs_onboarding(user_id: str) -> bool:
 
 
 def save_tenant_config(user_id: str, cfg: dict[str, Any]) -> dict[str, Any]:
-    """保存租户配置（加密敏感字段，并在微信密钥配齐时自动生成专属种子）"""
-    if not get_user_by_id(user_id):
-        raise ValueError(f"用户不存在: {user_id}")
-    merged = _deep_merge(json.loads(json.dumps(TENANT_DEFAULTS)), cfg)
-    enc_json = json.dumps(_encrypt_tenant_cfg(merged), ensure_ascii=False)
-    now = datetime.now().isoformat()
+    """保存租户配置（未变更密钥保留原密文不重复加密，并在微信配齐时生成专属种子）"""
     conn = _connect()
     try:
+        row = conn.execute("SELECT * FROM users WHERE id = ?", (user_id,)).fetchone()
+        if not row:
+            raise ValueError(f"用户不存在: {user_id}")
+        try:
+            old_raw = json.loads(row["config_json"] or "{}")
+        except Exception:
+            old_raw = {}
+        old_plain = _decrypt_tenant_cfg(old_raw)
+        merged = _deep_merge(json.loads(json.dumps(TENANT_DEFAULTS)), cfg)
+        enc_json = json.dumps(_encrypt_tenant_cfg_preserving(merged, old_plain, old_raw), ensure_ascii=False)
+        now = datetime.now().isoformat()
         conn.execute(
             "UPDATE users SET config_json = ?, updated_at = ? WHERE id = ?",
             (enc_json, now, user_id),

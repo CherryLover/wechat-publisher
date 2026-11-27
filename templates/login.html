@@ -61,7 +61,7 @@ h1{margin:0 0 6px;font-size:21px;font-weight:700}
 
       <form method="post" action="/login/password">
         <div class="field">
-          <input class="input" type="text" name="username" value="{{ username_prefill }}" placeholder="用户名（管理员默认 admin）" autocomplete="username" required>
+          <input class="input" type="text" name="username" value="{{ username_prefill }}" placeholder="请输入用户名" autocomplete="username" required>
         </div>
         <div class="field pw-wrap">
           <input class="input" id="pw-input" type="password" name="password" placeholder="输入登录密码" autocomplete="current-password" required>
@@ -83,11 +83,11 @@ h1{margin:0 0 6px;font-size:21px;font-weight:700}
       </div>
 
       {% if authorize_url or oidc_error %}
-      <div class="divider"><span class="line"></span><span class="txt">管理员快捷通道</span><span class="line"></span></div>
+      <div class="divider"><span class="line"></span><span class="txt">或</span><span class="line"></span></div>
       {% if authorize_url %}
       <a class="btn btn-sec" href="{{ authorize_url }}">
-        <i data-lucide="shield-check" style="width:18px;height:18px"></i>
-        使用 Pocket ID 登录
+        <i data-lucide="key-round" style="width:18px;height:18px"></i>
+        使用 Passkey 登录
       </a>
       {% elif oidc_error %}
       <div class="warn" style="margin:0">{{ oidc_error }}</div>

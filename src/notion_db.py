@@ -330,7 +330,7 @@ async def get_database_snapshot(
 
 
 async def test_connection(token: str, raw_db_id: str) -> dict[str, Any]:
-    """即时校验 Notion Integration Token 与数据库链接/ID 连通性（不落盘、不写缓存）"""
+    """即时校验 Notion Integration Token 与数据库链接/ID 连通性，并拉取最近文章列表（不落盘、不写缓存）"""
     tok = (token or "").strip()
     did = extract_database_id(raw_db_id)
     if not tok or not did:
@@ -340,11 +340,33 @@ async def test_connection(token: str, raw_db_id: str) -> dict[str, Any]:
         db_meta = await source.get_database(did)
         title = _extract_plain(db_meta.get("title")) or "未命名数据库"
         props = list((db_meta.get("properties") or {}).keys())
+        pages, _ = await source.query_database(
+            did,
+            sorts=[{"timestamp": "last_edited_time", "direction": "descending"}],
+            page_size=5,
+            max_pages=1,
+        )
+        articles = []
+        for page in (pages or [])[:5]:
+            articles.append({
+                "id": page.get("id") or "",
+                "title": _extract_title(page),
+                "status": _extract_status(page),
+                "edited_time": _fmt_iso(page.get("last_edited_time")),
+            })
+        is_empty = len(articles) == 0
+        msg = (
+            f"Notion 数据库「{title}」连接成功（{len(props)} 个属性字段），但当前文章列表为空"
+            if is_empty
+            else f"Notion 数据库「{title}」连接成功（{len(props)} 个属性字段），已拉取最近 {len(articles)} 篇文章"
+        )
         return {
             "ok": True,
             "db_id": did,
             "title": title,
-            "message": f"Notion 数据库「{title}」连接成功（{len(props)} 个属性字段）",
+            "empty": is_empty,
+            "articles": articles,
+            "message": msg,
         }
     except Exception as e:
         msg = str(e)
