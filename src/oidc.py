@@ -16,6 +16,9 @@ import time
 from typing import Optional
 
 import httpx
+from dotenv import load_dotenv
+
+load_dotenv()
 
 logger = logging.getLogger(__name__)
 

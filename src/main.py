@@ -14,6 +14,9 @@ from urllib.parse import quote, urlparse
 
 import httpx
 from dotenv import load_dotenv
+
+load_dotenv()
+
 from fastapi import Depends, FastAPI, File, HTTPException, Request, UploadFile
 from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, Response
 from fastapi.staticfiles import StaticFiles
@@ -48,8 +51,6 @@ UPLOAD_DIR = Path(os.getenv("UPLOAD_DIR", "/app/uploads"))
 STATIC_DIR = Path(__file__).parent.parent / "static"
 _WX_IMG_HOSTS = ("mmbiz.qpic.cn", "mmbiz.qlogo.cn", "wx.qlogo.cn")
 _WX_IMG_SRC_RE = re.compile(r'(<img\b[^>]*\bsrc=["\'])(https?://[^"\']+)(["\'][^>]*>)', re.IGNORECASE)
-
-load_dotenv()
 
 templates = Jinja2Templates(directory=Path(__file__).parent.parent / "templates")
 

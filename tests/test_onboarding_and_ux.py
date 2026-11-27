@@ -240,6 +240,14 @@ class TestOnboardingAndUX(unittest.TestCase):
         self.assertEqual(self.client.get("/favicon.ico").status_code, 200)
         self.assertEqual(self.client.get("/static/lucide.min.js").status_code, 200)
 
+    def test_main_loads_dotenv_before_local_module_imports(self):
+        main_src = Path(app_main.__file__).read_text(encoding="utf-8")
+        dotenv_pos = main_src.find("load_dotenv()")
+        local_import_pos = main_src.find("from . import")
+        self.assertNotEqual(dotenv_pos, -1)
+        self.assertNotEqual(local_import_pos, -1)
+        self.assertLess(dotenv_pos, local_import_pos)
+
 
 if __name__ == "__main__":
     unittest.main()
