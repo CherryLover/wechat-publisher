@@ -1,26 +1,27 @@
+# ============================================================================
+#  服务器部署（OCI /opt/stack/wechat-publisher）：拉 CI 构建的多架构公开镜像，不在服务器上 build。
+#  日常由 CI 的 deploy job 自动上线；手工更新：docker compose pull && docker compose up -d
+#  注意：调微信接口要求服务器公网 IP 在公众号后台 IP 白名单里
+# ============================================================================
 services:
   wechat-publisher:
-    build: .
     image: ghcr.io/cherrylover/wechat-publisher:latest
     container_name: wechat-publisher
     restart: unless-stopped
-    networks:
-      - dokploy-network
+    mem_limit: 512m
     volumes:
       - ./.env:/app/.env
-      - wechat-publisher-data:/app/data
-      - wechat-publisher-uploads:/app/uploads
+      - /data/wechat-publisher/data:/app/data
+      - /data/wechat-publisher/uploads:/app/uploads
+    networks: [proxy]
     labels:
-      - "traefik.enable=true"
-      - "traefik.http.routers.wechat-publisher.rule=Host(`publisher.flyooo.uk`)"
-      - "traefik.http.routers.wechat-publisher.entrypoints=websecure"
-      - "traefik.http.routers.wechat-publisher.tls.certresolver=letsencrypt"
-      - "traefik.http.services.wechat-publisher.loadbalancer.server.port=8000"
+      - traefik.enable=true
+      - traefik.docker.network=proxy
+      - traefik.http.routers.wechat-publisher.rule=Host(`publisher.flyooo.uk`)
+      - traefik.http.routers.wechat-publisher.entrypoints=websecure
+      - traefik.http.routers.wechat-publisher.tls.certresolver=letsencrypt
+      - traefik.http.services.wechat-publisher.loadbalancer.server.port=8000
 
 networks:
-  dokploy-network:
+  proxy:
     external: true
-
-volumes:
-  wechat-publisher-data:
-  wechat-publisher-uploads:

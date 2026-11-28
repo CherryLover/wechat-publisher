@@ -100,6 +100,12 @@ if STATIC_DIR.exists():
     app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
 
 
+@app.get("/healthz", include_in_schema=False)
+async def healthz():
+    """容器健康检查 / 自动上线判定用：进程能响应即可，不碰外部依赖。"""
+    return {"ok": True}
+
+
 @app.get("/favicon.ico", include_in_schema=False)
 async def favicon_ico():
     p = STATIC_DIR / "favicon.ico"

@@ -50,7 +50,7 @@
 
 ### 技术栈
 
-- **部署方式**：Docker 容器，部署在用户服务器（82.180.162.81），通过 Dokploy 管理
+- **部署方式**：Docker 容器，部署在 OCI（161.153.84.30，arm64，`/opt/stack/wechat-publisher`），Traefik 反代；push main 后 CI 自动测试 → 构建多架构镜像 → 上线（见「部署相关」）
 - **后端语言**：Python（FastAPI）
 - **MCP 传输**：SSE（Streamable HTTP），便于远程客户端连接
 - **存储**：SQLite（轻量，单文件，够用）
@@ -64,9 +64,11 @@
 
 ### 部署相关
 
-- **服务器**：82.180.162.81（海外服务器，微信 API 无地区限制）
-- **IP 白名单**：需要在微信公众平台「设置与开发 → 基本配置 → IP白名单」中添加 82.180.162.81
-- **服务管理**：Docker Swarm + Dokploy + Traefik
+- **服务器**：OCI 161.153.84.30（arm64；2026-11-06 从 self1 82.180.162.81 迁来）
+- **IP 白名单**：微信公众平台「设置与开发 → 基本配置 → IP白名单」里必须有 161.153.84.30
+- **服务管理**：docker compose + Traefik（外部网络 `proxy`），compose 即仓库里的 `docker-compose.yml`
+- **自动上线**（2026-11-28）：`.github/workflows/ci.yml` = test（unittest，依赖按 `constraints.txt` 锁版本，与镜像一致）→ image（amd64 + arm64 推 GHCR）→ deploy（Tailscale `tag:ci` 临时节点 SSH 到 OCI，执行 `/opt/deploy/deploy.sh wechat-publisher <sha>`；钥匙被 `command=` 锁死，等 Docker 健康检查 `/healthz` 通过才算成功，失败自动回滚到 `:previous`）
+- **依赖锁**：`constraints.txt` 锁传递依赖（新版 pydantic 与 mcp 1.9.2 不兼容）；升级依赖时同步更新它
 - **域名**：`publisher.flyooo.uk`（通过 Traefik 反代）
 - **MCP 端点**：`https://publisher.flyooo.uk/mcp/`（Streamable HTTP 传输）
 
@@ -292,15 +294,15 @@ pip install -r requirements.txt
 uvicorn src.main:app --reload
 ```
 
-**服务器部署**：
+**服务器部署**（日常 push main 即自动上线，以下为手工操作）：
 ```bash
-# SSH 到服务器后
-cd /root/wechat-publisher
-git pull
-docker compose up -d --build
-
-# 查看日志
-docker logs -f wechat-publisher
+# OCI 上
+cd /opt/stack/wechat-publisher
+sudo docker compose pull && sudo docker compose up -d      # 手工更新到 GHCR 最新
+sudo docker tag ghcr.io/cherrylover/wechat-publisher:previous ghcr.io/cherrylover/wechat-publisher:latest \
+  && sudo docker compose up -d                              # 手工回滚到上一版
+sudo docker logs -f wechat-publisher                        # 查看日志
+tail /var/log/deploy.log                                    # 自动上线记录
 ```
 
 **测试 API**：

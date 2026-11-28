@@ -1,0 +1,79 @@
+# ============================================================================
+#  CI/CD：测试 → main 分支构建多架构公开镜像（OCI 是 arm64）→ 自动上线到 OCI
+#  上线：经 Tailscale 临时节点（tag:ci）SSH 到 OCI，执行 /opt/deploy/deploy.sh
+#        wechat-publisher <sha>；钥匙被 command= 锁死，只能「上线某服务的某个 sha」，
+#        健康检查不过自动回滚并让本 job 失败。
+# ============================================================================
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - run: pip install -r requirements.txt -c constraints.txt   # 与镜像同一套版本
+      - run: python -m unittest discover -s tests -v
+
+  image:
+    needs: test
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-qemu-action@v3
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: true
+          platforms: linux/amd64,linux/arm64
+          tags: |
+            ghcr.io/cherrylover/wechat-publisher:latest
+            ghcr.io/cherrylover/wechat-publisher:${{ github.sha }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  deploy:
+    needs: image
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    concurrency:
+      group: deploy-wechat-publisher
+      cancel-in-progress: false
+    steps:
+      - uses: tailscale/github-action@v4
+        with:
+          oauth-client-id: ${{ secrets.TS_OAUTH_CLIENT_ID }}
+          oauth-secret: ${{ secrets.TS_OAUTH_SECRET }}
+          tags: tag:ci
+      - name: 上线到 OCI
+        env:
+          KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+          KNOWN_HOSTS: ${{ secrets.DEPLOY_KNOWN_HOSTS }}
+        run: |
+          install -d -m 700 ~/.ssh
+          install -m 600 /dev/null ~/.ssh/deploy && printf '%s\n' "$KEY" > ~/.ssh/deploy
+          printf '%s\n' "$KNOWN_HOSTS" > ~/.ssh/known_hosts
+          ssh -n -i ~/.ssh/deploy -o IdentitiesOnly=yes -o BatchMode=yes \
+              -o ConnectTimeout=30 -o ServerAliveInterval=15 \
+              root@100.117.65.30 "wechat-publisher ${{ github.sha }}"
